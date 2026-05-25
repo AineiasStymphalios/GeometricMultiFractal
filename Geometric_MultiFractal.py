@@ -428,10 +428,10 @@ def generatePlotTypes():
 	elif accuracy == 1: # Medium ACCURACY
 		# Name, Type, CX, CY, W, H, Angle, Terrain, Grain, Hills, Water%
 		regions = [
-			("Low_Fractal_Mainland", "Rect", 0.25, 0.50, 0.70, 1.2, 0, "default", ScatterGrain, BalanceGrain, 0),
-			("Low_Fractal_WesternMountains", "Rect", 0.05, 0.50, 0.2, 1.2, 0, "highland", ScatterGrain, GatherGrain, 10),
-			("Low_Fractal_Coast", "Ellipse", 0.4, 0.2, 0.9, 0.9, 0, "default", BalanceGrain, BalanceGrain, 15),
-			("Low_Fractal_North", "Ellipse", 0.8, 0.96, 0.6, 0.4, 45, "default", BalanceGrain, BalanceGrain, 20)
+			("Low_Fractal_Mainland", "Rect", 0.25, 0.50, 0.70, 1.2, 0, "default", ScatterGrain, ScatterGrain, 0),
+			("Low_Fractal_WesternMountains", "Rect", 0.05, 0.50, 0.2, 1.2, 0, "highland", ScatterGrain, ScatterGrain, 10),
+			("Low_Fractal_Coast", "Ellipse", 0.4, 0.2, 0.9, 0.9, 0, "default", BalanceGrain, ScatterGrain, 15),
+			("Low_Fractal_North", "Ellipse", 0.8, 0.96, 0.6, 0.4, 45, "default", BalanceGrain, ScatterGrain, 20)
 		]
 	else: # LOW Accuracy = Shapes
 		# Name, Type, CX, CY, W, H, Angle, Terrain, Grain, Hills, Water%
@@ -443,7 +443,7 @@ def generatePlotTypes():
 			("HighlandRect", "Rect", 0.25, 0.5, 0.15, 0.15, 0, "highland", GatherGrain, BalanceGrain, 0),
 			("AlpineRect", "Rect", 0.50, 0.5, 0.15, 0.15, 0, "alpine", GatherGrain, BalanceGrain, 0),
 			("WaterRect", "Rect", 0.75, 0.5, 0.2, 0.2, 80, "flat", GatherGrain, BalanceGrain, 0),
-			("WaterEllipse", "Ellipse", 0.75, 0.5, 0.15, 0.15, 45, "water", BalanceGrain, BalanceGrain, 0),
+			("WaterEllipse", "Ellipse", 0.75, 0.5, 0.10, 0.10, 45, "water", BalanceGrain, BalanceGrain, 100),
 			
 			("GatherGrainRect", "Rect", 0.25, 0.25, 0.15, 0.15, 0, "default", GatherGrain, BalanceGrain, 30),
 			("BalanceGrainRect", "Rect", 0.50, 0.25, 0.15, 0.15, 0, "default", BalanceGrain, BalanceGrain, 30),
@@ -554,10 +554,8 @@ class CustomClimateGenerator:
 				proj_dist = (dx * cosA) + (dy * sinA)
 				
 				if driver.type == "LINEAR":
-					# If behind origin, factor is 0.0 (full start_val)
-					if proj_dist < 0:
-						factor = 0.0
-					else:
+					# Tiles behind the origin are outside the linear influence.
+					if proj_dist >= 0:
 						factor = proj_dist / driver.radius
 						
 				elif driver.type == "MIRRORED":
