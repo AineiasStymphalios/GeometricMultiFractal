@@ -1,15 +1,8 @@
 # GeometricMultiFractal
 
-Civilization IV: Beyond the Sword mapscript and browser-based helper toolkit.
+A mapscript and editing webapp for Civilization IV: Beyond the Sword.
 
-## Open the Toolkit
-
-Use the launcher page:
-
-[Open index.html](index.html)
-
-If GitHub Pages is enabled, use:
-
+Details in link.
 https://AineiasStymphalios.github.io/GeometricMultiFractal/
 
 ## Contents
