@@ -1,0 +1,627 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+	<title>Civ4 GMF Misc Region Editor</title>
+	<style>
+		:root {
+			--bg-app: #151529;
+			--bg-container: #211f3d;
+			--bg-panel: #1a1933;
+			--bg-group: #2d2a52;
+			--bg-input: #eeeaff;
+			--bg-canvas: #111126;
+			--bg-canvas-inner: #e5e8f7;
+			--text-main: #eeeaff;
+			--text-label: #c8b8ff;
+			--text-input: #17162d;
+			--border-accent: #8f7dea;
+			--btn-primary: #8b7cf6;
+			--btn-text: #090816;
+			--grid-color: rgba(170,150,255,0.22);
+			--shadow: rgba(0,0,0,0.45);
+		}
+		body.light-mode {
+			--bg-app: #e6e3fb;
+			--bg-container: #fbfaff;
+			--bg-panel: #f1effd;
+			--bg-group: #e2dcfa;
+			--bg-input: #ffffff;
+			--bg-canvas: #d6d1f2;
+			--bg-canvas-inner: #ffffff;
+			--text-main: #241d4a;
+			--text-label: #5c4aa5;
+			--text-input: #241d4a;
+			--border-accent: #a99ce7;
+			--btn-primary: #6957b8;
+			--btn-text: #ffffff;
+			--grid-color: rgba(95,70,160,0.14);
+			--shadow: rgba(50,35,110,0.16);
+		}
+		* { box-sizing: border-box; user-select: none; }
+		body { margin: 0; padding: 20px; background: var(--bg-app); color: var(--text-main); font-family: "Segoe UI", system-ui, sans-serif; }
+		.app { max-width: 2100px; margin: 0 auto; padding: 20px; border-radius: 28px; background: var(--bg-container); box-shadow: 0 20px 35px var(--shadow); }
+		.top { display: flex; gap: 20px; align-items: stretch; flex-wrap: wrap; }
+		.left { width: 300px; flex: 0 0 auto; display: flex; flex-direction: column; gap: 12px; }
+		.center { flex: 2.5; min-width: 520px; display: flex; flex-direction: column; gap: 14px; }
+		.right { flex: 1.15; min-width: 360px; display: flex; flex-direction: column; gap: 18px; }
+		.bottom { display: flex; gap: 20px; margin-top: 20px; }
+		.panel { background: var(--bg-panel); border: 1px solid var(--border-accent); border-radius: 22px; padding: 16px; }
+		.panel.collapsed { height: 52px; overflow: hidden; padding: 9px; }
+		.panel.collapsed .panel-content { display: none; }
+		.gear { width: 100%; margin-bottom: 10px; padding: 8px; border: 0; border-radius: 30px; background: var(--btn-primary); color: var(--btn-text); font-weight: 800; cursor: pointer; text-transform: uppercase; }
+		.collapsed .gear { margin-bottom: 0; }
+		.title { margin-bottom: 10px; color: var(--text-label); font-size: 0.78rem; font-weight: 800; text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
+		.group { margin-bottom: 12px; padding: 10px 12px; border-radius: 18px; background: var(--bg-group); }
+		label { display: block; margin-bottom: 5px; color: var(--text-label); font-size: 0.62rem; font-weight: 800; text-transform: uppercase; }
+		.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+		input, select, textarea { background: var(--bg-input); color: var(--text-input); border: 1px solid var(--border-accent); border-radius: 24px; padding: 6px 10px; font-family: monospace; font-weight: bold; }
+		input[type=range] { width: 100%; margin: 8px 0; }
+		.btn, .mini { background: var(--btn-primary); color: var(--btn-text); border: 0; border-radius: 30px; font-weight: 800; cursor: pointer; font-family: inherit; }
+		.btn { padding: 7px 14px; font-size: 0.8rem; }
+		.mini { padding: 5px 10px; font-size: 0.66rem; text-transform: uppercase; }
+		.danger { background: #d95656; color: #fff; }
+		.toggle { background: #24536f; color: #fff; }
+		.toggle.active { background: #9fd5ff; color: #06131f; }
+		.badge { padding: 3px 9px; border-radius: 20px; border: 1px solid var(--border-accent); background: var(--bg-group); color: var(--text-main); font-size: 0.68rem; font-weight: 800; }
+		.canvas-wrap { min-height: 590px; height: 100%; padding: 12px; border-radius: 22px; background: var(--bg-canvas); box-shadow: inset 0 0 0 2px var(--border-accent), 0 8px 18px rgba(0,0,0,0.22); overflow: auto; display: flex; justify-content: center; align-items: center; }
+		.visibility-panel { width: 100%; }
+		.visibility-content { display: flex; align-items: center; gap: 12px; }
+		.visibility-content .title { margin-bottom: 0; white-space: nowrap; }
+		.visibility-buttons { flex: 1; display: flex; gap: 12px; }
+		.visibility-buttons .mini { padding: 10px 18px; font-size: 0.82rem; }
+		canvas { display: block; background: var(--bg-canvas-inner); cursor: crosshair; transform-origin: center center; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+		.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+		.grid .wide { grid-column: span 2; }
+		.field input, .field select { width: 100%; font-size: 0.78rem; }
+		.list { max-height: 270px; overflow-y: auto; padding: 9px; border-radius: 18px; background: var(--bg-group); }
+		.item { margin: 5px 0; padding: 6px 9px; border-left: 3px solid var(--btn-primary); border-radius: 22px; background: var(--bg-canvas); color: var(--text-main); font-size: 0.74rem; cursor: pointer; display: flex; gap: 7px; align-items: center; }
+		.item.selected { background: var(--btn-primary); color: var(--btn-text); font-weight: 800; }
+		.eye { background: none; border: 0; color: inherit; cursor: pointer; opacity: 0.35; }
+		.eye.visible { opacity: 1; }
+		.hidden { display: none; }
+		.bonus-row { display: grid; grid-template-columns: 1fr 58px 76px 32px; gap: 6px; align-items: center; margin-bottom: 6px; }
+		.bonus-head { display: grid; grid-template-columns: 1fr 58px 76px 32px; gap: 6px; margin-bottom: 4px; color: var(--text-label); font-size: 0.58rem; font-weight: 800; text-transform: uppercase; }
+		.bonus-row input, .bonus-row select { width: 100%; font-size: 0.72rem; padding: 5px 8px; }
+		.bonus-remove { border: 0; border-radius: 16px; background: #d95656; color: #fff; cursor: pointer; font-weight: 800; height: 28px; }
+		textarea { width: 100%; min-height: 170px; border-radius: 16px; resize: vertical; background: var(--bg-canvas); color: var(--text-main); font-size: 0.82rem; user-select: text; }
+		.export-panel { flex: 1; }
+	</style>
+</head>
+<body>
+<div class="app">
+	<div class="top">
+		<div class="left">
+			<div class="panel" id="systemPanel">
+				<button class="gear" onclick="togglePanel('systemPanel')">⚙️ System</button>
+				<div class="panel-content">
+					<div class="group">
+						<label>Project</label>
+						<div class="row">
+							<button id="saveProjectBtn" class="mini" style="flex:1">💾 Save</button>
+							<button id="loadProjectBtn" class="mini" style="flex:1">📂 Load</button>
+						</div>
+						<div class="row" style="margin-top:8px">
+							<button id="undoBtn" class="mini" style="flex:1">↩️ Undo</button>
+							<button id="redoBtn" class="mini" style="flex:1">↪️ Redo</button>
+						</div>
+					</div>
+					<button id="themeBtn" class="btn" style="width:100%; margin-bottom:12px">🌓 Toggle Theme</button>
+					<div class="group">
+						<label>🗺️ Canvas Size</label>
+						<div class="row">
+							<input id="mapW" type="number" value="1000" style="width:76px"> x
+							<input id="mapH" type="number" value="700" style="width:76px">
+							<button id="applySizeBtn" class="mini">OK</button>
+						</div>
+					</div>
+					<div class="group">
+						<label>🔲 Grid Size</label>
+						<div class="row">
+							<input id="gridW" type="number" value="80" style="width:76px"> x
+							<input id="gridH" type="number" value="40" style="width:76px">
+							<button id="gridBtn" class="mini toggle">Grid Off</button>
+						</div>
+					</div>
+					<div class="group">
+						<label>🔎 Zoom</label>
+						<div class="row">
+							<input id="zoomSlider" type="range" min="0.1" max="2.5" step="0.01" value="1" style="flex:1">
+							<button id="fitBtn" class="mini">Fit</button>
+						</div>
+						<span id="zoomLabel" class="badge">100%</span>
+					</div>
+				</div>
+			</div>
+			<div class="panel collapsed" id="bgPanel">
+				<button class="gear" onclick="togglePanel('bgPanel')">🖼️ Background</button>
+				<div class="panel-content">
+					<div class="row" style="margin-bottom:8px">
+						<button id="uploadBgBtn" class="btn" style="flex:1">📁 Upload</button>
+						<button id="clearBgBtn" class="btn danger">❌ Clear</button>
+					</div>
+					<div id="bgStatus" class="badge" style="display:block; text-align:center; margin-bottom:10px">No Image</div>
+					<div class="group">
+						<label>📍 Position X/Y</label>
+						<div class="row">
+							<input id="bgX" type="number" value="0" style="width:80px">
+							<input id="bgY" type="number" value="0" style="width:80px">
+						</div>
+					</div>
+					<div class="group"><label>📏 Scale</label><input id="bgScale" type="number" value="1" step="0.05" min="0.1" style="width:100%"></div>
+					<div class="group"><label>🌫️ Opacity</label><input id="bgAlpha" type="range" min="0" max="1" step="0.01" value="1"></div>
+				</div>
+			</div>
+			<div class="panel collapsed" id="stylePanel">
+				<button class="gear" onclick="togglePanel('stylePanel')">🎨 Style</button>
+				<div class="panel-content">
+					<div class="group"><label>🖌️ Border Width</label><input id="lineWidth" type="number" value="2.5" step="0.5" min="1" style="width:100%"></div>
+					<div class="group"><label>🔤 Text Size</label><input id="textSize" type="number" value="12" step="1" min="6" style="width:100%"></div>
+					<div class="group"><label>🌫️ Fill Opacity</label><input id="fillAlpha" type="range" min="0.05" max="0.9" step="0.01" value="0.28"></div>
+				</div>
+			</div>
+		</div>
+		<div class="center">
+			<div class="canvas-wrap" id="canvasWrap"><canvas id="mapCanvas" width="1000" height="700"></canvas></div>
+			<div class="panel visibility-panel">
+				<div class="visibility-content">
+					<div class="title">Region Visibility</div>
+					<div class="visibility-buttons">
+						<button id="toggleSpawnBtn" class="mini" style="flex:1">👁️ Spawn</button>
+						<button id="toggleResourceBtn" class="mini" style="flex:1">👁️ Resource</button>
+						<button id="toggleGenericBtn" class="mini" style="flex:1">👁️ Generic</button>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="right">
+			<div class="panel">
+				<div class="title">🧰 Misc Region Properties <span id="selectionBadge" class="badge">none</span></div>
+				<div class="grid">
+					<div class="field wide"><label>Name</label><input id="regName" type="text" disabled></div>
+					<div class="field"><label>Kind</label><select id="regKind" disabled><option value="spawn">Spawn</option><option value="resource">Resource</option><option value="generic">Generic</option></select></div>
+					<div class="field spawn-prop"><label>Group</label><select id="regGroup" disabled><option value="primary">Primary</option><option value="secondary">Secondary</option><option value="tertiary">Tertiary</option><option value="none">None</option></select></div>
+					<div class="field"><label>X</label><input id="regX" type="number" step="0.001" min="0" max="1" disabled></div>
+					<div class="field"><label>Y</label><input id="regY" type="number" step="0.001" min="0" max="1" disabled></div>
+					<div class="field"><label>Width</label><input id="regW" type="number" step="0.001" min="0.001" max="1" disabled></div>
+					<div class="field"><label>Height</label><input id="regH" type="number" step="0.001" min="0.001" max="1" disabled></div>
+					<div class="field spawn-prop"><label>Prefer Coast</label><select id="preferCoast" disabled><option value="false">False</option><option value="true">True</option></select></div>
+					<div class="field spawn-prop"><label>Prefer River</label><select id="preferRiver" disabled><option value="false">False</option><option value="true">True</option></select></div>
+					<div class="field wide resource-prop">
+						<label>Bonuses</label>
+						<div class="bonus-head"><span>Bonus Type</span><span>Count</span><span>Plains if forced</span><span></span></div>
+						<div id="bonusList"></div>
+						<button id="addBonusBtn" class="mini" style="width:100%; margin-top:4px" disabled>➕ Add Bonus</button>
+					</div>
+					<div class="field"><label>Color</label><input id="regColor" type="color" value="#49a6dc" disabled></div>
+				</div>
+			</div>
+			<div class="panel">
+				<div class="title">🧭 Regions</div>
+				<div class="row" style="margin-bottom:8px">
+					<button id="addSpawnBtn" class="mini" style="flex:1">➕ Spawn</button>
+					<button id="addResourceBtn" class="mini" style="flex:1">➕ Resource</button>
+					<button id="addGenericBtn" class="mini" style="flex:1">➕ Generic</button>
+				</div>
+				<div class="row" style="margin-bottom:8px">
+					<button id="duplicateBtn" class="mini" style="flex:1">📋 Duplicate</button>
+					<button id="deselectBtn" class="mini" style="flex:1">⭕ Deselect</button>
+					<button id="deleteBtn" class="mini danger">🗑️ Delete</button>
+				</div>
+				<div class="list" id="regionList"></div>
+			</div>
+		</div>
+	</div>
+	<div class="bottom">
+		<div class="export-panel panel">
+			<div class="title">📥 Import Tuple Lists <button id="importBtn" class="mini" style="margin-left:auto">Load</button></div>
+			<textarea id="importArea" placeholder='Paste SPAWN_REGIONS entries or region_specs snippets...'></textarea>
+		</div>
+		<div class="export-panel panel">
+			<div class="title">📄 Export <select id="exportMode" style="margin-left:auto"><option value="all">All</option><option value="spawn">Spawn Only</option><option value="resource">Resources Only</option><option value="generic">Generic Rects</option></select><button id="exportBtn" class="mini">Generate</button><button id="copyBtn" class="mini">Copy</button></div>
+			<textarea id="outputArea" placeholder="Export result..."></textarea>
+		</div>
+	</div>
+</div>
+<script>
+(function(){
+	let mapWidth = 1000, mapHeight = 700, gridW = 80, gridH = 40, showGrid = false, zoom = 1;
+	let bgImageData = null, backgroundImage = null, bgAlpha = 1, bgX = 0, bgY = 0, bgScale = 1;
+	let lineWidth = 2.5, textSize = 12, fillAlpha = 0.28;
+	let regions = [], selectedId = null, dragMode = null, activeHandle = null, dragStart = null, dragRegion = null;
+	let undoStack = [], redoStack = [];
+	const MAX_HISTORY = 50, STORAGE_KEY = "gmf_misc_regions_project";
+	const canvas = document.getElementById("mapCanvas"), ctx = canvas.getContext("2d");
+	const PROP_IDS = ["regName","regKind","regGroup","regX","regY","regW","regH","preferCoast","preferRiver","regColor"];
+
+	window.togglePanel = function(id) { document.getElementById(id).classList.toggle("collapsed"); };
+
+	function id() { return Date.now() + "-" + Math.random().toString(36).substr(2, 5); }
+	function clamp(v, lo, hi) { if (v < lo) return lo; if (v > hi) return hi; return v; }
+	function boolText(v) { return v ? "True" : "False"; }
+	function jsBool(value) { return value === true || value === "true"; }
+	function selectedRegion() { return regions.find(function(r) { return r.id === selectedId; }) || null; }
+	function normToAbs(r) { const w = r.w * mapWidth, h = r.h * mapHeight, cx = r.x * mapWidth, cy = (1 - r.y) * mapHeight; return { cx: cx, cy: cy, w: w, h: h, x: cx - w/2, y: cy - h/2 }; }
+	function getMouse(e) { const b = canvas.getBoundingClientRect(); return { x: (e.clientX - b.left) * (canvas.width / b.width), y: (e.clientY - b.top) * (canvas.height / b.height) }; }
+	function saveHistory() { undoStack.push(JSON.parse(JSON.stringify(regions))); if (undoStack.length > MAX_HISTORY) undoStack.shift(); redoStack = []; }
+	function autoSave() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(projectData())); } catch(e) {} }
+
+	function clearSelection() { syncFocused(); selectedId = null; dragMode = null; redraw(); updatePanels(); }
+	function syncFocused() { if (document.activeElement && PROP_IDS.includes(document.activeElement.id)) syncProps(); }
+	function safeName(name) { let s = String(name || "Region").replace(/[^A-Za-z0-9_]/g, "_"); if (!/^[A-Za-z_]/.test(s)) s = "Region_" + s; return s; }
+	function fmt(v) { return Number(v).toFixed(3).replace(/0+$/, "").replace(/\.$/, ".0"); }
+	function colorForKind(kind) { if (kind === "spawn") return "#d65f6f"; if (kind === "resource") return "#9b5cff"; return "#55a6ff"; }
+	function isOldDefaultColor(color) { return color === "#49a6dc" || color === "#5fd3a1" || color === "#b4a7ff"; }
+	function normalizeBonuses(r) {
+		if (!r) return;
+		if (!r.bonuses) r.bonuses = [];
+		if (typeof r.bonuses === "string") r.bonuses = parseBonuses(r.bonuses);
+	}
+
+	function addRegion(kind) {
+		saveHistory();
+		const name = kind === "spawn" ? "NewSpawn" : (kind === "resource" ? "NewResourceRegion" : "NewRegion");
+		const r = { id: id(), name: name + (regions.length + 1), kind: kind, group: kind === "spawn" ? "primary" : "none", x: 0.5, y: 0.5, w: 0.12, h: 0.10, preferCoast: false, preferRiver: false, bonuses: [], color: colorForKind(kind), visible: true };
+		regions.push(r); selectedId = r.id; redraw(); updatePanels(); autoSave();
+	}
+
+	function duplicateRegion() {
+		const r = selectedRegion(); if (!r) return;
+		saveHistory();
+		const copy = JSON.parse(JSON.stringify(r));
+		copy.id = id(); copy.name = r.name + "_copy"; copy.x = clamp(copy.x + 0.02, 0, 1); copy.y = clamp(copy.y + 0.02, 0, 1);
+		regions.push(copy); selectedId = copy.id; redraw(); updatePanels(); autoSave();
+	}
+
+	function deleteRegion() {
+		if (!selectedId) return;
+		saveHistory();
+		regions = regions.filter(function(r) { return r.id !== selectedId; });
+		selectedId = null; redraw(); updatePanels(); autoSave();
+	}
+
+	function toggleKindVisibility(kind) {
+		const matches = regions.filter(function(r) { return r.kind === kind; });
+		if (!matches.length) return;
+		saveHistory();
+		const shouldShow = matches.some(function(r) { return r.visible === false; });
+		matches.forEach(function(r) { r.visible = shouldShow; });
+		redraw(); updatePanels(); autoSave();
+	}
+
+	function undo() {
+		if (!undoStack.length) return;
+		redoStack.push(JSON.parse(JSON.stringify(regions)));
+		regions = undoStack.pop(); if (!selectedRegion()) selectedId = null;
+		redraw(); updatePanels(); autoSave();
+	}
+
+	function redo() {
+		if (!redoStack.length) return;
+		undoStack.push(JSON.parse(JSON.stringify(regions)));
+		regions = redoStack.pop(); if (!selectedRegion()) selectedId = null;
+		redraw(); updatePanels(); autoSave();
+	}
+
+	function drawGrid() {
+		if (!showGrid) return;
+		ctx.save(); ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--grid-color"); ctx.lineWidth = 0.5; ctx.beginPath();
+		const sx = mapWidth / gridW, sy = mapHeight / gridH;
+		for (let x = 0; x <= mapWidth + 1; x += sx) { ctx.moveTo(x, 0); ctx.lineTo(x, mapHeight); }
+		for (let y = 0; y <= mapHeight + 1; y += sy) { ctx.moveTo(0, y); ctx.lineTo(mapWidth, y); }
+		ctx.stroke(); ctx.restore();
+	}
+
+	function redraw() {
+		canvas.width = mapWidth; canvas.height = mapHeight; canvas.style.transform = "scale(" + zoom + ")";
+		ctx.clearRect(0, 0, mapWidth, mapHeight);
+		if (backgroundImage && backgroundImage.complete) {
+			ctx.save(); ctx.globalAlpha = bgAlpha;
+			const dw = backgroundImage.width * bgScale, dh = backgroundImage.height * bgScale;
+			ctx.drawImage(backgroundImage, (mapWidth/2 + bgX) - dw/2, (mapHeight/2 + bgY) - dh/2, dw, dh);
+			ctx.restore();
+		} else {
+			ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--bg-canvas-inner"); ctx.fillRect(0,0,mapWidth,mapHeight);
+		}
+		drawGrid();
+		regions.forEach(function(r) {
+			if (r.visible === false) return;
+			const a = normToAbs(r), selected = r.id === selectedId;
+			ctx.save();
+			ctx.globalAlpha = fillAlpha; ctx.fillStyle = r.color; ctx.fillRect(a.x, a.y, a.w, a.h);
+			ctx.globalAlpha = 1; ctx.strokeStyle = selected ? "#ffb23d" : r.color; ctx.lineWidth = selected ? lineWidth + 2 : lineWidth; ctx.strokeRect(a.x, a.y, a.w, a.h);
+			ctx.fillStyle = "#06131f"; ctx.font = "bold " + textSize + "px Segoe UI, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+			ctx.fillText(r.name, a.cx, a.cy);
+			if (selected) drawHandles(a);
+			ctx.restore();
+		});
+	}
+
+	function drawHandles(a) {
+		const hs = 7 / zoom;
+		const pts = [{h:"nw",x:a.x,y:a.y},{h:"ne",x:a.x+a.w,y:a.y},{h:"sw",x:a.x,y:a.y+a.h},{h:"se",x:a.x+a.w,y:a.y+a.h},{h:"n",x:a.cx,y:a.y},{h:"s",x:a.cx,y:a.y+a.h},{h:"e",x:a.x+a.w,y:a.cy},{h:"w",x:a.x,y:a.cy}];
+		ctx.fillStyle = "#fff"; ctx.strokeStyle = "#06131f"; ctx.lineWidth = 1.5 / zoom;
+		pts.forEach(function(p) { ctx.beginPath(); ctx.rect(p.x - hs, p.y - hs, hs*2, hs*2); ctx.fill(); ctx.stroke(); });
+	}
+
+	function hitHandle(r, m) {
+		const a = normToAbs(r), hs = Math.max(7, 10 / zoom);
+		const pts = [{h:"nw",x:a.x,y:a.y},{h:"ne",x:a.x+a.w,y:a.y},{h:"sw",x:a.x,y:a.y+a.h},{h:"se",x:a.x+a.w,y:a.y+a.h},{h:"n",x:a.cx,y:a.y},{h:"s",x:a.cx,y:a.y+a.h},{h:"e",x:a.x+a.w,y:a.cy},{h:"w",x:a.x,y:a.cy}];
+		for (let i=0; i<pts.length; i++) if (Math.abs(m.x - pts[i].x) <= hs && Math.abs(m.y - pts[i].y) <= hs) return pts[i].h;
+		return null;
+	}
+
+	function hitRegion(m) {
+		for (let i=regions.length-1; i>=0; i--) {
+			const r = regions[i]; if (r.visible === false) continue;
+			const a = normToAbs(r);
+			if (m.x >= a.x && m.x <= a.x+a.w && m.y >= a.y && m.y <= a.y+a.h) return r;
+		}
+		return null;
+	}
+
+	function mouseDown(e) {
+		syncFocused();
+		const m = getMouse(e); let hit = null, handle = null;
+		const current = selectedRegion();
+		if (current) { handle = hitHandle(current, m); if (handle) hit = current; }
+		if (!hit) hit = hitRegion(m);
+		if (!hit) { clearSelection(); return; }
+		selectedId = hit.id; saveHistory();
+		dragMode = handle ? "resize" : "move"; activeHandle = handle; dragStart = m; dragRegion = JSON.parse(JSON.stringify(hit));
+		redraw(); updatePanels();
+	}
+
+	function mouseMove(e) {
+		if (!dragMode) return;
+		const r = selectedRegion(); if (!r) return;
+		const m = getMouse(e); let dx = m.x - dragStart.x, dy = m.y - dragStart.y;
+		if (dragMode === "move" && e.shiftKey) { if (Math.abs(dx) >= Math.abs(dy)) dy = 0; else dx = 0; }
+		if (dragMode === "move") {
+			r.x = clamp(dragRegion.x + dx / mapWidth, 0, 1);
+			r.y = clamp(dragRegion.y - dy / mapHeight, 0, 1);
+		} else {
+			let w = dragRegion.w * mapWidth, h = dragRegion.h * mapHeight;
+			if (activeHandle.indexOf("e") >= 0) w += dx * 2;
+			if (activeHandle.indexOf("w") >= 0) w -= dx * 2;
+			if (activeHandle.indexOf("s") >= 0) h += dy * 2;
+			if (activeHandle.indexOf("n") >= 0) h -= dy * 2;
+			r.w = clamp(w / mapWidth, 0.001, 1);
+			r.h = clamp(h / mapHeight, 0.001, 1);
+			r.x = dragRegion.x; r.y = dragRegion.y;
+		}
+		redraw(); updatePanels();
+	}
+
+	function mouseUp() { if (!dragMode) return; dragMode = null; activeHandle = null; dragStart = null; dragRegion = null; autoSave(); }
+
+	function updatePanels() { updateList(); updateProps(); }
+	function updateKindButtons() {
+		[
+			["spawn", "toggleSpawnBtn", "Spawn"],
+			["resource", "toggleResourceBtn", "Resource"],
+			["generic", "toggleGenericBtn", "Generic"]
+		].forEach(function(data) {
+			const kind = data[0], id = data[1], label = data[2];
+			const btn = document.getElementById(id);
+			const matches = regions.filter(function(r) { return r.kind === kind; });
+			const hidden = matches.length > 0 && matches.every(function(r) { return r.visible === false; });
+			btn.innerText = (hidden ? "👁️ Show " : "🙈 Hide ") + label;
+			btn.classList.toggle("toggle", hidden);
+		});
+	}
+	function updateList() {
+		updateKindButtons();
+		const list = document.getElementById("regionList"); list.innerHTML = "";
+		regions.forEach(function(r) {
+			const item = document.createElement("div"); item.className = "item" + (r.id === selectedId ? " selected" : ""); item.onclick = function(){ syncFocused(); selectedId = r.id; redraw(); updatePanels(); };
+			const eye = document.createElement("button"); eye.className = "eye" + (r.visible !== false ? " visible" : ""); eye.innerText = r.visible !== false ? "on" : "off";
+			eye.onclick = function(ev){ ev.stopPropagation(); saveHistory(); r.visible = r.visible === false; redraw(); updatePanels(); autoSave(); };
+			const name = document.createElement("span"); name.style.flex = "1"; name.innerText = r.name;
+			const kind = document.createElement("span"); kind.innerText = r.kind;
+			item.appendChild(eye); item.appendChild(name); item.appendChild(kind); list.appendChild(item);
+		});
+	}
+
+	function updateProps() {
+		const r = selectedRegion(), has = !!r;
+		document.getElementById("selectionBadge").innerText = has ? r.kind : "none";
+		PROP_IDS.forEach(function(pid){ document.getElementById(pid).disabled = !has; });
+		document.getElementById("addBonusBtn").disabled = !has || r.kind !== "resource";
+		document.querySelectorAll(".spawn-prop").forEach(function(el){ el.classList.toggle("hidden", !has || r.kind !== "spawn"); });
+		document.querySelectorAll(".resource-prop").forEach(function(el){ el.classList.toggle("hidden", !has || r.kind !== "resource"); });
+		if (!has) { PROP_IDS.forEach(function(pid){ if (pid !== "regColor") document.getElementById(pid).value = ""; }); renderBonusRows(null); return; }
+		normalizeBonuses(r);
+		document.getElementById("regName").value = r.name; document.getElementById("regKind").value = r.kind; document.getElementById("regGroup").value = r.group;
+		document.getElementById("regX").value = r.x.toFixed(3); document.getElementById("regY").value = r.y.toFixed(3); document.getElementById("regW").value = r.w.toFixed(3); document.getElementById("regH").value = r.h.toFixed(3);
+		document.getElementById("preferCoast").value = String(!!r.preferCoast); document.getElementById("preferRiver").value = String(!!r.preferRiver);
+		document.getElementById("regColor").value = r.color || colorForKind(r.kind);
+		renderBonusRows(r);
+	}
+
+	function renderBonusRows(region) {
+		const list = document.getElementById("bonusList");
+		list.innerHTML = "";
+		if (!region || region.kind !== "resource") return;
+		normalizeBonuses(region);
+		region.bonuses.forEach(function(bonus, index) {
+			const row = document.createElement("div");
+			row.className = "bonus-row";
+
+			const name = document.createElement("input");
+			name.type = "text";
+			name.value = bonus.name || "";
+			name.placeholder = "BONUS_SILK";
+			name.oninput = function() { bonus.name = name.value; redraw(); autoSave(); };
+
+			const count = document.createElement("input");
+			count.type = "number";
+			count.min = "1";
+			count.step = "1";
+			count.value = bonus.count || 1;
+			count.oninput = function() { bonus.count = parseInt(count.value, 10) || 1; autoSave(); };
+
+			const clear = document.createElement("select");
+			clear.innerHTML = '<option value="false">False</option><option value="true">True</option>';
+			clear.value = String(!!bonus.clear);
+			clear.onchange = function() { bonus.clear = jsBool(clear.value); autoSave(); };
+
+			const remove = document.createElement("button");
+			remove.className = "bonus-remove";
+			remove.innerText = "x";
+			remove.onclick = function() {
+				saveHistory();
+				region.bonuses.splice(index, 1);
+				renderBonusRows(region);
+				autoSave();
+			};
+
+			row.appendChild(name);
+			row.appendChild(count);
+			row.appendChild(clear);
+			row.appendChild(remove);
+			list.appendChild(row);
+		});
+	}
+
+	function syncProps() {
+		const r = selectedRegion(); if (!r) return;
+		const before = JSON.stringify(regions);
+		const oldKind = r.kind;
+		r.name = document.getElementById("regName").value || r.name; r.kind = document.getElementById("regKind").value; r.group = document.getElementById("regGroup").value;
+		r.x = clamp(parseFloat(document.getElementById("regX").value) || 0, 0, 1); r.y = clamp(parseFloat(document.getElementById("regY").value) || 0, 0, 1);
+		r.w = clamp(parseFloat(document.getElementById("regW").value) || 0.001, 0.001, 1); r.h = clamp(parseFloat(document.getElementById("regH").value) || 0.001, 0.001, 1);
+		r.preferCoast = jsBool(document.getElementById("preferCoast").value); r.preferRiver = jsBool(document.getElementById("preferRiver").value);
+		if (oldKind !== r.kind) r.color = colorForKind(r.kind);
+		else r.color = document.getElementById("regColor").value || colorForKind(r.kind);
+		normalizeBonuses(r);
+		if (before !== JSON.stringify(regions)) { undoStack.push(JSON.parse(before)); if (undoStack.length > MAX_HISTORY) undoStack.shift(); redoStack = []; }
+		redraw(); updatePanels(); autoSave();
+	}
+
+	function parseBonuses(text) {
+		if (Array.isArray(text)) return text;
+		if (!text) return [];
+		const out = [];
+		text.split(",").forEach(function(part) {
+			const bits = part.trim().split(":");
+			if (bits[0]) out.push({ name: bits[0].trim(), count: parseInt(bits[1] || "1", 10) || 1, clear: jsBool((bits[2] || "false").trim()) });
+		});
+		return out;
+	}
+
+	function exportSpawn() {
+		const lines = ["\tSPAWN_REGIONS = {"], primary = [], secondary = [], tertiary = [];
+		regions.filter(function(r){ return r.kind === "spawn"; }).forEach(function(r) {
+			lines.push('\t\t"' + safeName(r.name) + '": (' + fmt(r.x) + ', ' + fmt(r.y) + ', ' + fmt(r.w) + ', ' + fmt(r.h) + ', ' + boolText(r.preferCoast) + ', ' + boolText(r.preferRiver) + '),');
+			if (r.group === "primary") primary.push(safeName(r.name));
+			else if (r.group === "secondary") secondary.push(safeName(r.name));
+			else if (r.group === "tertiary") tertiary.push(safeName(r.name));
+		});
+		lines.push("\t}");
+		lines.push("");
+		lines.push("\tprimary_regions = [" + primary.map(function(n){ return '"' + n + '"'; }).join(", ") + "]");
+		lines.push("\tsecondary_regions = [" + secondary.map(function(n){ return '"' + n + '"'; }).join(", ") + "]");
+		lines.push("\ttertiary_regions = [" + tertiary.map(function(n){ return '"' + n + '"'; }).join(", ") + "]");
+		return lines;
+	}
+
+	function exportResources() {
+		const lines = ["\t\tregion_specs = ["];
+		regions.filter(function(r){ return r.kind === "resource"; }).forEach(function(r) {
+			normalizeBonuses(r);
+			lines.push("\t\t\t{");
+			lines.push('\t\t\t\t"name": "' + safeName(r.name) + '",');
+			lines.push("\t\t\t\t\"rect\": (" + fmt(r.x) + ", " + fmt(r.y) + ", " + fmt(r.w) + ", " + fmt(r.h) + "),");
+			lines.push('\t\t\t\t"bonuses": [');
+			r.bonuses.forEach(function(b) { if (b.name) lines.push('\t\t\t\t\t("' + b.name + '", ' + b.count + ', ' + boolText(b.clear) + '),'); });
+			lines.push("\t\t\t\t]");
+			lines.push("\t\t\t},");
+		});
+		lines.push("\t\t]");
+		return lines;
+	}
+
+	function exportGeneric() {
+		const lines = ["\tMISC_RECTS = ["];
+		regions.filter(function(r){ return r.kind === "generic"; }).forEach(function(r) {
+			lines.push('\t\t("' + safeName(r.name) + '", (' + fmt(r.x) + ', ' + fmt(r.y) + ', ' + fmt(r.w) + ', ' + fmt(r.h) + ')),');
+		});
+		lines.push("\t]");
+		return lines;
+	}
+
+	function generateExport() {
+		const mode = document.getElementById("exportMode").value, out = [];
+		if (mode === "spawn" || mode === "all") out.push.apply(out, exportSpawn());
+		if (mode === "all") out.push("");
+		if (mode === "resource" || mode === "all") out.push.apply(out, exportResources());
+		if (mode === "all") out.push("");
+		if (mode === "generic" || mode === "all") out.push.apply(out, exportGeneric());
+		document.getElementById("outputArea").value = out.join("\n");
+	}
+
+	function importText() {
+		const text = document.getElementById("importArea").value, newRegions = [];
+		const spawnRe = /"([^"]+)"\s*:\s*\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*(True|False)\s*,\s*(True|False)\s*\)/g;
+		let m; while ((m = spawnRe.exec(text)) !== null) newRegions.push({ id:id(), name:m[1], kind:"spawn", group:"none", x:parseFloat(m[2]), y:parseFloat(m[3]), w:parseFloat(m[4]), h:parseFloat(m[5]), preferCoast:m[6]==="True", preferRiver:m[7]==="True", bonuses:"", color:colorForKind("spawn"), visible:true });
+		const resRe = /"name"\s*:\s*"([^"]+)"[\s\S]*?"rect"\s*:\s*\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)\s*\)[\s\S]*?"bonuses"\s*:\s*\[([\s\S]*?)\]/g;
+		while ((m = resRe.exec(text)) !== null) {
+			const bonuses = [], bonusRe = /\(\s*"([^"]+)"\s*,\s*([0-9]+)\s*,\s*(True|False)\s*\)/g; let b;
+			while ((b = bonusRe.exec(m[6])) !== null) bonuses.push({ name: b[1], count: parseInt(b[2], 10) || 1, clear: b[3] === "True" });
+			newRegions.push({ id:id(), name:m[1], kind:"resource", group:"none", x:parseFloat(m[2]), y:parseFloat(m[3]), w:parseFloat(m[4]), h:parseFloat(m[5]), preferCoast:false, preferRiver:false, bonuses:bonuses, color:colorForKind("resource"), visible:true });
+		}
+		if (!newRegions.length) { alert("No supported region tuples found."); return; }
+		saveHistory(); regions = newRegions; selectedId = regions[0].id; redraw(); updatePanels(); autoSave();
+	}
+
+	function projectData() { return { mapWidth:mapWidth, mapHeight:mapHeight, gridW:gridW, gridH:gridH, showGrid:showGrid, zoom:zoom, bgImageData:bgImageData, bgAlpha:bgAlpha, bgX:bgX, bgY:bgY, bgScale:bgScale, lineWidth:lineWidth, textSize:textSize, fillAlpha:fillAlpha, regions:regions, theme:document.body.classList.contains("light-mode") ? "light" : "dark" }; }
+	function loadProject(data) {
+		mapWidth=data.mapWidth||1000; mapHeight=data.mapHeight||700; gridW=data.gridW||80; gridH=data.gridH||40; showGrid=!!data.showGrid; zoom=data.zoom||1; bgImageData=data.bgImageData||null; bgAlpha=data.bgAlpha===undefined?1:data.bgAlpha; bgX=data.bgX||0; bgY=data.bgY||0; bgScale=data.bgScale||1; lineWidth=data.lineWidth||2.5; textSize=data.textSize||12; fillAlpha=data.fillAlpha===undefined?0.28:data.fillAlpha; regions=data.regions||[]; selectedId=regions.length?regions[0].id:null; regions.forEach(function(r){ normalizeBonuses(r); if (!r.color || isOldDefaultColor(r.color)) r.color = colorForKind(r.kind); }); document.body.classList.toggle("light-mode", data.theme==="light"); syncStateInputs(); loadBg(); redraw(); updatePanels();
+	}
+	function syncStateInputs() {
+		document.getElementById("mapW").value=mapWidth; document.getElementById("mapH").value=mapHeight; document.getElementById("gridW").value=gridW; document.getElementById("gridH").value=gridH; document.getElementById("zoomSlider").value=zoom; document.getElementById("zoomLabel").innerText=Math.round(zoom*100)+"%"; document.getElementById("gridBtn").innerText=showGrid?"Grid On":"Grid Off"; document.getElementById("gridBtn").classList.toggle("active", showGrid); document.getElementById("bgX").value=bgX; document.getElementById("bgY").value=bgY; document.getElementById("bgScale").value=bgScale; document.getElementById("bgAlpha").value=bgAlpha; document.getElementById("lineWidth").value=lineWidth; document.getElementById("textSize").value=textSize; document.getElementById("fillAlpha").value=fillAlpha;
+	}
+	function loadBg() { if (!bgImageData) { backgroundImage=null; document.getElementById("bgStatus").innerText="No Image"; return; } backgroundImage=new Image(); backgroundImage.onload=function(){ document.getElementById("bgStatus").innerText="Loaded"; redraw(); }; backgroundImage.src=bgImageData; }
+
+	function bind() {
+		document.getElementById("themeBtn").onclick=function(){ document.body.classList.toggle("light-mode"); redraw(); autoSave(); };
+		document.getElementById("undoBtn").onclick=undo; document.getElementById("redoBtn").onclick=redo;
+		document.getElementById("addSpawnBtn").onclick=function(){ addRegion("spawn"); }; document.getElementById("addResourceBtn").onclick=function(){ addRegion("resource"); }; document.getElementById("addGenericBtn").onclick=function(){ addRegion("generic"); };
+		document.getElementById("duplicateBtn").onclick=duplicateRegion; document.getElementById("deleteBtn").onclick=deleteRegion; document.getElementById("deselectBtn").onclick=clearSelection;
+		document.getElementById("toggleSpawnBtn").onclick=function(){ toggleKindVisibility("spawn"); };
+		document.getElementById("toggleResourceBtn").onclick=function(){ toggleKindVisibility("resource"); };
+		document.getElementById("toggleGenericBtn").onclick=function(){ toggleKindVisibility("generic"); };
+		document.getElementById("addBonusBtn").onclick=function(){
+			const r = selectedRegion();
+			if (!r || r.kind !== "resource") return;
+			saveHistory();
+			normalizeBonuses(r);
+			r.bonuses.push({ name:"BONUS_", count:1, clear:false });
+			renderBonusRows(r);
+			autoSave();
+		};
+		document.getElementById("exportBtn").onclick=generateExport; document.getElementById("importBtn").onclick=importText; document.getElementById("copyBtn").onclick=function(){ const out=document.getElementById("outputArea"); out.select(); document.execCommand("copy"); };
+		PROP_IDS.forEach(function(pid){ const el=document.getElementById(pid); el.oninput=syncProps; el.onchange=syncProps; });
+		document.getElementById("applySizeBtn").onclick=function(){ mapWidth=parseInt(document.getElementById("mapW").value,10)||1000; mapHeight=parseInt(document.getElementById("mapH").value,10)||700; redraw(); autoSave(); };
+		document.getElementById("gridW").oninput=function(e){ gridW=parseInt(e.target.value,10)||1; redraw(); autoSave(); }; document.getElementById("gridH").oninput=function(e){ gridH=parseInt(e.target.value,10)||1; redraw(); autoSave(); };
+		document.getElementById("gridBtn").onclick=function(e){ showGrid=!showGrid; e.target.innerText=showGrid?"Grid On":"Grid Off"; e.target.classList.toggle("active", showGrid); redraw(); autoSave(); };
+		document.getElementById("zoomSlider").oninput=function(e){ zoom=parseFloat(e.target.value); document.getElementById("zoomLabel").innerText=Math.round(zoom*100)+"%"; redraw(); autoSave(); };
+		document.getElementById("fitBtn").onclick=function(){ const c=document.getElementById("canvasWrap"); zoom=clamp(Math.min((c.clientWidth-40)/mapWidth,(c.clientHeight-40)/mapHeight),0.1,2.5); document.getElementById("zoomSlider").value=zoom; document.getElementById("zoomLabel").innerText=Math.round(zoom*100)+"%"; redraw(); autoSave(); };
+		document.getElementById("uploadBgBtn").onclick=function(){ const input=document.createElement("input"); input.type="file"; input.accept="image/*"; input.onchange=function(e){ const file=e.target.files[0]; if(!file)return; const reader=new FileReader(); reader.onload=function(ev){ bgImageData=ev.target.result; loadBg(); autoSave(); }; reader.readAsDataURL(file); }; input.click(); };
+		document.getElementById("clearBgBtn").onclick=function(){ bgImageData=null; backgroundImage=null; document.getElementById("bgStatus").innerText="No Image"; redraw(); autoSave(); };
+		document.getElementById("bgX").oninput=function(e){ bgX=parseFloat(e.target.value)||0; redraw(); autoSave(); }; document.getElementById("bgY").oninput=function(e){ bgY=parseFloat(e.target.value)||0; redraw(); autoSave(); }; document.getElementById("bgScale").oninput=function(e){ bgScale=parseFloat(e.target.value)||1; redraw(); autoSave(); }; document.getElementById("bgAlpha").oninput=function(e){ bgAlpha=parseFloat(e.target.value); redraw(); autoSave(); };
+		document.getElementById("lineWidth").oninput=function(e){ lineWidth=parseFloat(e.target.value)||1; redraw(); autoSave(); }; document.getElementById("textSize").oninput=function(e){ textSize=parseFloat(e.target.value)||12; redraw(); autoSave(); }; document.getElementById("fillAlpha").oninput=function(e){ fillAlpha=parseFloat(e.target.value); redraw(); autoSave(); };
+		document.getElementById("saveProjectBtn").onclick=function(){ const blob=new Blob([JSON.stringify(projectData(),null,2)],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="gmf_misc_regions_project.json"; a.click(); };
+		document.getElementById("loadProjectBtn").onclick=function(){ const input=document.createElement("input"); input.type="file"; input.accept=".json"; input.onchange=function(e){ const file=e.target.files[0]; if(!file)return; const reader=new FileReader(); reader.onload=function(ev){ loadProject(JSON.parse(ev.target.result)); autoSave(); }; reader.readAsText(file); }; input.click(); };
+		canvas.addEventListener("mousedown", mouseDown); window.addEventListener("mousemove", mouseMove); window.addEventListener("mouseup", mouseUp);
+		window.addEventListener("keydown", function(e){ if(e.ctrlKey&&e.key.toLowerCase()==="z"){e.preventDefault(); if(e.shiftKey)redo(); else undo(); return;} if(e.ctrlKey&&e.key.toLowerCase()==="y"){e.preventDefault(); redo(); return;} if(e.key==="Escape"){e.preventDefault(); clearSelection(); return;} if(document.activeElement&&(document.activeElement.tagName==="INPUT"||document.activeElement.tagName==="TEXTAREA"))return; if(e.key==="Delete"||e.key==="Backspace"){e.preventDefault(); deleteRegion();} });
+	}
+	function init(){ bind(); try{ const raw=localStorage.getItem(STORAGE_KEY); if(raw) loadProject(JSON.parse(raw)); }catch(e){} syncStateInputs(); redraw(); updatePanels(); }
+	init();
+})();
+</script>
+</body>
+</html>
+

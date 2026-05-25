@@ -1,0 +1,1323 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Civ4 GMF Climate Simulator</title>
+    <style>
+        :root {
+            --bg-app: #0f1d16;
+            --bg-container: #17291f;
+            --bg-panel: #122219;
+            --bg-group: #203929;
+            --bg-input: #edf8ef;
+            --bg-canvas: #0b1510;
+            --text-main: #edf8ef;
+            --text-label: #b9e8bd;
+            --text-input: #102116;
+            --border-accent: #69b574;
+            --btn-primary: #76c77e;
+            --btn-text: #06130a;
+            --btn-muted: #315f3d;
+            --shadow: rgba(0,0,0,0.45);
+        }
+        body.light-mode {
+            --bg-app: #dfeee2;
+            --bg-container: #f7fbf7;
+            --bg-panel: #eef7ef;
+            --bg-group: #dceee0;
+            --bg-input: #ffffff;
+            --bg-canvas: #cfe4d3;
+            --text-main: #18311f;
+            --text-label: #2f7d3f;
+            --text-input: #18311f;
+            --border-accent: #8fcf98;
+            --btn-primary: #2f8e45;
+            --btn-text: #ffffff;
+            --btn-muted: #4f9460;
+            --shadow: rgba(25,70,35,0.16);
+        }
+        * { box-sizing: border-box; user-select: none; }
+        body { margin: 0; padding: 20px; min-height: 100vh; background: var(--bg-app); color: var(--text-main); font-family: "Segoe UI", system-ui, sans-serif; }
+        .app { max-width: 2100px; margin: 0 auto; padding: 20px; border-radius: 28px; background: var(--bg-container); box-shadow: 0 20px 35px var(--shadow); }
+        .top { display: flex; gap: 20px; align-items: stretch; flex-wrap: wrap; }
+        .bottom-row { display: flex; gap: 20px; margin-top: 20px; flex-wrap: wrap; }
+        .controls { width: 300px; flex: 0 0 auto; display: flex; flex-direction: column; gap: 12px; overflow: visible; padding: 0; background: transparent; border: 0; }
+        .center-col { flex: 2.35; min-width: 500px; display: flex; flex-direction: column; gap: 14px; }
+        .map-area { flex: 2.35; min-width: 500px; min-height: 610px; padding: 12px; border-radius: 22px; background: var(--bg-canvas); box-shadow: inset 0 0 0 2px var(--border-accent), 0 8px 18px rgba(0,0,0,0.22); display: flex; justify-content: center; align-items: center; overflow: auto; }
+        .right-col { flex: 1.15; min-width: 360px; display: flex; flex-direction: column; gap: 18px; }
+        .bottom { margin-top: 20px; }
+        .panel { background: var(--bg-panel); border: 1px solid var(--border-accent); border-radius: 22px; padding: 16px; }
+        .panel.collapsed { height: 52px; overflow: hidden; padding: 9px; }
+        .panel.collapsed .panel-content { display: none; }
+        .panel-title { margin-bottom: 10px; color: var(--text-label); font-size: 0.78rem; font-weight: 800; text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
+        .collapse-btn { width: 100%; margin: 0 0 10px 0; padding: 8px; border: 0; border-radius: 30px; background: var(--btn-primary); color: var(--btn-text); font-weight: 800; cursor: pointer; text-transform: uppercase; font-size: 0.78rem; font-family: inherit; }
+        .panel.collapsed .collapse-btn { margin-bottom: 0; }
+        .group { margin-bottom: 12px; padding: 10px 12px; border-radius: 18px; background: var(--bg-group); }
+        .map-stack { display: flex; flex-direction: column; gap: 12px; }
+        .side-by-side { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .input-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .toggle-group { display: flex; gap: 8px; flex-wrap: wrap; }
+        label { display: block; margin-bottom: 5px; color: var(--text-label); font-size: 0.62rem; font-weight: 800; text-transform: uppercase; }
+        input, select, textarea { background: var(--bg-input); color: var(--text-input); border: 1px solid var(--border-accent); border-radius: 24px; padding: 6px 10px; font-family: monospace; font-weight: bold; }
+        input[type="number"] { width: 74px; }
+        input[type="file"] { width: 100%; color: var(--text-main); background: transparent; border: 0; padding: 0; font-size: 0.78rem; }
+        input[type="range"] { width: 100%; margin: 8px 0; }
+        button { flex: 1; padding: 5px 10px; cursor: pointer; border: 0; background: var(--btn-primary); color: var(--btn-text); border-radius: 30px; font-size: 0.66rem; font-weight: 800; font-family: inherit; text-transform: uppercase; }
+        .toggle-group button { background: var(--btn-muted); color: #ffffff; }
+        button.active { background: var(--btn-primary); color: var(--btn-text); }
+        button.danger { background: #d95656; color: #fff; }
+        textarea { width: 100%; min-height: 170px; background: var(--bg-canvas); color: var(--text-main); border-color: var(--border-accent); border-radius: 16px; font-size: 0.82rem; padding: 12px; resize: vertical; user-select: text; }
+        canvas { background: #000; image-rendering: pixelated; border: 2px solid var(--border-accent); box-shadow: 0 0 24px rgba(0,0,0,0.45); }
+        .legend { display: flex; gap: 12px; margin-top: 8px; font-size: 0.75rem; flex-wrap: wrap; }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .color-box { width: 12px; height: 12px; border: 1px solid #fff; }
+        #legendArea .legend { font-size: 1rem; gap: 16px; }
+        #legendArea .color-box { width: 20px; height: 20px; }
+        .badge { padding: 3px 9px; border-radius: 20px; background: var(--bg-group); border: 1px solid var(--border-accent); color: var(--text-main); font-size: 0.68rem; font-weight: 800; }
+        .driver-list { max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+        .driver-item { padding: 7px 10px; border-radius: 18px; background: var(--bg-group); border-left: 4px solid var(--border-accent); color: var(--text-main); font-size: 0.74rem; font-weight: 700; cursor: pointer; }
+        .driver-item.selected { background: var(--btn-primary); color: var(--btn-text); border-left-color: #ffffff; }
+        .driver-item.temp { border-left-color: #ff6565; }
+        .driver-item.moisture { border-left-color: #55c8ff; }
+        .props-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+        .props-grid .wide { grid-column: span 2; }
+        .props-grid input, .props-grid select { width: 100%; font-size: 0.74rem; }
+        .mini-btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .full-btn-row { display: grid; grid-template-columns: 1fr; gap: 8px; }
+        .import-panel, .export-panel { flex: 1; min-width: 420px; }
+    </style>
+</head>
+<body>
+<div class="app">
+    <div class="top">
+        <div class="controls">
+            <div class="panel" id="systemPanel">
+                <button class="collapse-btn" onclick="togglePanel('systemPanel')">⚙️ System</button>
+                <div class="panel-content">
+                    <div class="group">
+                        <label>Project</label>
+                        <div class="mini-btn-row">
+                            <button id="saveProjectBtn">💾 Save</button>
+                            <button id="loadProjectBtn">📂 Load</button>
+                            <button id="undoBtn">↩️ Undo</button>
+                            <button id="redoBtn">↪️ Redo</button>
+                        </div>
+                    </div>
+                    <button id="themeToggleBtn" style="width:100%; margin-bottom:12px">🌓 Toggle Theme</button>
+                    <div class="map-stack">
+                        <div class="group">
+                            <label>Map Resolution</label>
+                            <div class="input-row">
+                                <input type="number" id="mapW" value="48" min="5" max="100">
+                                <span>x</span>
+                                <input type="number" id="mapH" value="32" min="5" max="100">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel" id="backgroundPanel">
+                <button class="collapse-btn" onclick="togglePanel('backgroundPanel')">🖼️ Background</button>
+                <div class="panel-content">
+                    <div class="input-row" style="margin-bottom:8px">
+                        <button id="uploadBgBtn">📁 Upload</button>
+                        <button id="removeImage" class="danger">❌ Clear</button>
+                    </div>
+                    <div id="bgStatus" class="badge" style="margin-bottom:12px">No Image</div>
+                    <input type="file" id="imageUpload" accept="image/*" style="display:none">
+                    <div class="group">
+                        <label>Position X / Y</label>
+                        <div class="input-row">
+                            <input type="number" id="bgPosX" value="0" step="1">
+                            <input type="number" id="bgPosY" value="0" step="1">
+                        </div>
+                    </div>
+                    <div class="group">
+                        <label>Scale</label>
+                        <input type="number" id="bgScale" value="1" step="0.05" min="0.1">
+                    </div>
+                    <div class="group">
+                        <label>Opacity</label>
+                        <input type="range" id="overlayOpacity" min="0" max="1" step="0.05" value="0.5">
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel" id="displayPanel">
+                <button class="collapse-btn" onclick="togglePanel('displayPanel')">👁️ Display</button>
+                <div class="panel-content">
+                    <div class="group">
+                        <label>Target</label>
+                        <div class="toggle-group">
+                            <button id="viewTemp" class="active">Temperature</button>
+                            <button id="viewMoist">Moisture</button>
+                            <button id="viewTerrain">Terrain</button>
+                            <button id="viewFeature">Feature</button>
+                        </div>
+                    </div>
+                    <div class="group">
+                        <label>Rendering Mode</label>
+                        <div class="toggle-group">
+                            <button id="modeColor" class="active">Colors</button>
+                            <button id="modeNumeric">Numbers</button>
+                        </div>
+                    </div>
+                    <div class="side-by-side">
+                        <div class="group">
+                            <label>Jitter / Noise</label>
+                            <input type="range" id="noiseMult" min="0" max="0.5" step="0.05" value="0.25">
+                        </div>
+                        <div class="group">
+                            <label>Pixel Size</label>
+                            <input type="number" id="pixelSize" value="12" min="2" max="50">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="center-col">
+            <div class="map-area">
+                <canvas id="mapCanvas"></canvas>
+            </div>
+            <div class="panel" id="legendPanel">
+                <button class="collapse-btn" onclick="togglePanel('legendPanel')">🧭 Legend</button>
+                <div class="panel-content">
+                    <div class="panel-title"><span class="badge">current mode</span></div>
+                    <div id="legendArea"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="right-col">
+            <div class="panel" id="driverPropsPanel">
+                <button class="collapse-btn" onclick="togglePanel('driverPropsPanel')">🧰 Driver Properties</button>
+                <div class="panel-content">
+                    <div class="group">
+                        <div class="props-grid">
+                            <div>
+                                <label>Target</label>
+                                <select id="driverTarget">
+                                    <option value="TEMP">TEMP</option>
+                                    <option value="MOISTURE">MOISTURE</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label>Type</label>
+                                <select id="driverType">
+                                    <option value="LINEAR">LINEAR</option>
+                                    <option value="RADIAL">RADIAL</option>
+                                    <option value="MIRRORED">MIRRORED</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label>Origin X</label>
+                                <input type="number" id="driverX" step="0.01">
+                            </div>
+                            <div>
+                                <label>Origin Y</label>
+                                <input type="number" id="driverY" step="0.01">
+                            </div>
+                            <div>
+                                <label>Start</label>
+                                <input type="number" id="driverStart" step="0.05">
+                            </div>
+                            <div>
+                                <label>End</label>
+                                <input type="number" id="driverEnd" step="0.05">
+                            </div>
+                            <div>
+                                <label>Length / Radius</label>
+                                <input type="number" id="driverRadius" step="0.01" min="0.01">
+                            </div>
+                            <div>
+                                <label>Angle</label>
+                                <input type="number" id="driverAngle" step="1">
+                            </div>
+                        </div>
+                        <div class="mini-btn-row" style="margin-top:10px">
+                            <button id="duplicateDriver">Duplicate</button>
+                            <button id="deleteDriver" class="danger">Delete</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="panel" id="driversPanel">
+                <button class="collapse-btn" onclick="togglePanel('driversPanel')">🧲 Climate Drivers</button>
+                <div class="panel-content">
+                    <div class="group">
+                        <label>Base Values</label>
+                        <div class="input-row">
+                            Temperature <input type="number" id="baseT" value="0.3" step="0.1">
+                            Moisture <input type="number" id="baseM" value="0.25" step="0.1">
+                        </div>
+                    </div>
+                    <div class="group">
+                        <label>Add Driver</label>
+                        <div class="mini-btn-row">
+                            <button id="addTempLinear">Temp Line</button>
+                            <button id="addMoistLinear">Moist Line</button>
+                            <button id="addTempRadial">Temp Radial</button>
+                            <button id="addMoistRadial">Moist Radial</button>
+                        </div>
+                    </div>
+                    <div class="group">
+                        <label>Driver List</label>
+                        <div id="driverList" class="driver-list"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bottom-row">
+        <div class="panel import-panel" id="importPanel">
+            <button class="collapse-btn" onclick="togglePanel('importPanel')">📥 Import Climate Drivers</button>
+            <div class="panel-content">
+                <button id="loadDriversBtn" style="margin-bottom:10px">Load From Text</button>
+                <textarea id="importArea" placeholder="Paste ClimateDriver definitions...">
+self.drivers.append(ClimateDriver("TEMP", "LINEAR", (0.5, 1.0), 1.0, 0.0, 1.0, -90))
+self.drivers.append(ClimateDriver("MOISTURE", "RADIAL", (0.35, 0.55), -0.5, 0.0, 0.2))
+self.drivers.append(ClimateDriver("MOISTURE", "RADIAL", (0.18, 0.6), -0.5, 0.0, 0.15))
+self.drivers.append(ClimateDriver("MOISTURE", "LINEAR", (1.0, .7), 1.0, 0.3, 0.3, -170))
+self.drivers.append(ClimateDriver("MOISTURE", "LINEAR", (1.0, 0.0), 1.0, 0.1, 0.60, 160))
+self.drivers.append(ClimateDriver("MOISTURE", "LINEAR", (0, 0.2), 0.7, 0.3, 0.2, 30))
+self.drivers.append(ClimateDriver("MOISTURE", "RADIAL", (0.2, 1), 1.7, 0.0, 0.4))
+self.drivers.append(ClimateDriver("MOISTURE", "RADIAL", (0.7, 1), 1.6, 0, 0.45))
+                </textarea>
+            </div>
+        </div>
+        <div class="panel export-panel" id="exportPanel">
+            <button class="collapse-btn" onclick="togglePanel('exportPanel')">📄 Export Climate Drivers</button>
+            <div class="panel-content">
+                <div class="mini-btn-row" style="margin-bottom:10px">
+                    <button id="generateDriversBtn">Generate</button>
+                    <button id="copyDriversBtn">Copy</button>
+                </div>
+                <textarea id="outputArea" placeholder="Export result..."></textarea>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    const canvas = document.getElementById('mapCanvas');
+    const ctx = canvas.getContext('2d');
+    const importArea = document.getElementById('importArea');
+    const outputArea = document.getElementById('outputArea');
+    const imageUpload = document.getElementById('imageUpload');
+    const uploadBgBtn = document.getElementById('uploadBgBtn');
+    const removeImageBtn = document.getElementById('removeImage');
+    const overlayOpacity = document.getElementById('overlayOpacity');
+    const bgStatus = document.getElementById('bgStatus');
+    const bgPosX = document.getElementById('bgPosX');
+    const bgPosY = document.getElementById('bgPosY');
+    const bgScale = document.getElementById('bgScale');
+    const driverList = document.getElementById('driverList');
+    const driverTarget = document.getElementById('driverTarget');
+    const driverType = document.getElementById('driverType');
+    const driverX = document.getElementById('driverX');
+    const driverY = document.getElementById('driverY');
+    const driverStart = document.getElementById('driverStart');
+    const driverEnd = document.getElementById('driverEnd');
+    const driverRadius = document.getElementById('driverRadius');
+    const driverAngle = document.getElementById('driverAngle');
+    
+    let viewMode = 'TEMP'; 
+    let renderMode = 'COLOR';
+    let overlayImg = null;
+    let selectedDriverIndex = 0;
+    let dragDriver = null;
+    let isUpdatingDriverForm = false;
+    let climateDrivers = [];
+    let overlayImageData = null;
+    let undoStack = [];
+    let redoStack = [];
+    let settingsSnapshot = null;
+    const MAX_HISTORY = 50;
+    const STORAGE_KEY = 'gmf_climate_project';
+
+    function togglePanel(id) {
+        const panel = document.getElementById(id);
+        if (panel) panel.classList.toggle('collapsed');
+    }
+
+    function cloneData(data) {
+        return JSON.parse(JSON.stringify(data));
+    }
+
+    function getProjectData() {
+        return {
+            mapW: document.getElementById('mapW').value,
+            mapH: document.getElementById('mapH').value,
+            pixelSize: document.getElementById('pixelSize').value,
+            baseT: document.getElementById('baseT').value,
+            baseM: document.getElementById('baseM').value,
+            noiseMult: document.getElementById('noiseMult').value,
+            overlayOpacity: overlayOpacity.value,
+            overlayImageData: overlayImageData,
+            bgPosX: bgPosX.value,
+            bgPosY: bgPosY.value,
+            bgScale: bgScale.value,
+            importText: importArea.value,
+            outputText: outputArea.value,
+            drivers: getCurrentDrivers(),
+            selectedDriverIndex: selectedDriverIndex,
+            viewMode: viewMode,
+            renderMode: renderMode,
+            theme: document.body.classList.contains('light-mode') ? 'light' : 'dark'
+        };
+    }
+
+    function applyProjectData(data) {
+        if (!data) return;
+        document.getElementById('mapW').value = data.mapW || 40;
+        document.getElementById('mapH').value = data.mapH || 32;
+        document.getElementById('pixelSize').value = data.pixelSize || 12;
+        document.getElementById('baseT').value = data.baseT === undefined ? 0.3 : data.baseT;
+        document.getElementById('baseM').value = data.baseM === undefined ? 0.25 : data.baseM;
+        document.getElementById('noiseMult').value = data.noiseMult === undefined ? 0.25 : data.noiseMult;
+        overlayOpacity.value = data.overlayOpacity === undefined ? 0.5 : data.overlayOpacity;
+        bgPosX.value = data.bgPosX === undefined ? 0 : data.bgPosX;
+        bgPosY.value = data.bgPosY === undefined ? 0 : data.bgPosY;
+        bgScale.value = data.bgScale === undefined ? 1 : data.bgScale;
+        importArea.value = data.importText || importArea.value;
+        overlayImageData = data.overlayImageData || null;
+        viewMode = data.viewMode || 'TEMP';
+        renderMode = data.renderMode || 'COLOR';
+        document.body.classList.toggle('light-mode', data.theme === 'light');
+        writeDrivers(data.drivers || parseDrivers(importArea.value));
+        if (data.outputText) outputArea.value = data.outputText;
+        selectedDriverIndex = data.selectedDriverIndex === undefined ? 0 : data.selectedDriverIndex;
+        loadOverlayImage();
+        updateModeButtons();
+        render();
+    }
+
+    function saveHistoryState() {
+        undoStack.push(cloneData(getProjectData()));
+        if (undoStack.length > MAX_HISTORY) undoStack.shift();
+        redoStack = [];
+    }
+
+    function performUndo() {
+        if (undoStack.length === 0) return;
+        redoStack.push(cloneData(getProjectData()));
+        applyProjectData(undoStack.pop());
+        autoSave();
+    }
+
+    function performRedo() {
+        if (redoStack.length === 0) return;
+        undoStack.push(cloneData(getProjectData()));
+        applyProjectData(redoStack.pop());
+        autoSave();
+    }
+
+    function autoSave() {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(getProjectData())); } catch(e) {}
+    }
+
+    function loadAutoSave() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) applyProjectData(JSON.parse(raw));
+        } catch(e) {}
+    }
+
+    const TEMP_THRESHOLDS = [0.10, 0.20, 0.75];
+    const MOISTURE_THRESHOLDS = [0.20, 0.45, 0.70];
+
+    const BIOME_TABLE = [
+        ["Snow", "Snow", "Snow", "Tundra"],
+        ["Snow", "Tundra", "Tundra", [["Tundra", 80], ["Grassland", 20]]],
+        ["Desert", [["Desert", 40], ["Plains", 60]], [["Plains", 30], ["Grassland", 70]], "Grassland"],
+        ["Desert", [["Desert", 40], ["Plains", 60]], [["Plains", 30], ["Grassland", 70]], "Grassland"]
+    ];
+
+    const FEATURE_TABLE = [
+        [null, null, null, "Snow"],
+        [null, null, "Snow", [["Snow", 60], ["Pine", 40]]],
+        [null, null, [["Deciduous", 30], ["Pine", 70]], [["Deciduous", 70], ["Pine", 30]]],
+        [null, "Deciduous", [["Deciduous", 70], ["Jungle", 30]], [["Deciduous", 20], ["Jungle", 80]]]
+    ];
+
+    // Simple pseudo-random noise
+    const noiseGrid = Array.from({length: 101}, () => Array.from({length: 101}, () => Math.random() - 0.5));
+
+    function parseDrivers(text) {
+        text = text === undefined ? importArea.value : text;
+        const drivers = [];
+        const regex = /ClimateDriver\s*\(\s*"([^"]+)"\s*,\s*"([^"]+)"\s*,\s*\(\s*([^,]+)\s*,\s*([^)]+)\s*\)\s*,\s*([^,]+)\s*,\s*([^,]+)\s*,\s*([^,)]+)(?:\s*,\s*([^)]+))?\s*\)/g;
+        
+        let match;
+        while ((match = regex.exec(text)) !== null) {
+            drivers.push({
+                target: match[1],
+                type: match[2],
+                origin: [parseFloat(match[3]), parseFloat(match[4])],
+                startVal: parseFloat(match[5]),
+                endVal: parseFloat(match[6]),
+                radius: parseFloat(match[7]),
+                angle: match[8] ? parseFloat(match[8]) : 0
+            });
+        }
+        return drivers;
+    }
+
+    function clamp01(value) {
+        return Math.max(0, Math.min(1, value));
+    }
+
+    function formatNum(value) {
+        if (!isFinite(value)) return '0.0';
+        let text = Number(value).toFixed(3);
+        text = text.replace(/0+$/, '').replace(/\.$/, '');
+        if (text.indexOf('.') === -1) text += '.0';
+        return text;
+    }
+
+    function formatDriver(d) {
+        const base = 'self.drivers.append(ClimateDriver("' + d.target + '", "' + d.type + '", (' +
+            formatNum(d.origin[0]) + ', ' + formatNum(d.origin[1]) + '), ' +
+            formatNum(d.startVal) + ', ' + formatNum(d.endVal) + ', ' + formatNum(d.radius);
+        if (d.type === 'RADIAL') return base + '))';
+        return base + ', ' + formatNum(d.angle || 0) + '))';
+    }
+
+    function writeDrivers(drivers) {
+        climateDrivers = drivers.map(d => ({
+            target: d.target,
+            type: d.type,
+            origin: [d.origin[0], d.origin[1]],
+            startVal: d.startVal,
+            endVal: d.endVal,
+            radius: d.radius,
+            angle: d.angle || 0
+        }));
+        outputArea.value = climateDrivers.map(formatDriver).join('\n');
+    }
+
+    function getCurrentDrivers() {
+        return climateDrivers.map(d => ({
+            target: d.target,
+            type: d.type,
+            origin: [d.origin[0], d.origin[1]],
+            startVal: d.startVal,
+            endVal: d.endVal,
+            radius: d.radius,
+            angle: d.angle || 0
+        }));
+    }
+
+    function ensureSelectedIndex(drivers) {
+        if (drivers.length === 0) {
+            selectedDriverIndex = -1;
+        } else if (selectedDriverIndex < 0 || selectedDriverIndex >= drivers.length) {
+            selectedDriverIndex = drivers.length - 1;
+        }
+    }
+
+    function updateDriverList(drivers) {
+        ensureSelectedIndex(drivers);
+        if (drivers.length === 0) {
+            driverList.innerHTML = '<div class="driver-item">No drivers</div>';
+            return;
+        }
+
+        driverList.innerHTML = drivers.map((d, i) => {
+            const cls = d.target === 'TEMP' ? 'temp' : 'moisture';
+            return '<div class="driver-item ' + cls + (i === selectedDriverIndex ? ' selected' : '') +
+                '" data-index="' + i + '">' + (i + 1) + '. ' + d.target + ' ' + d.type +
+                ' @ ' + formatNum(d.origin[0]) + ', ' + formatNum(d.origin[1]) + '</div>';
+        }).join('');
+
+        Array.from(driverList.querySelectorAll('.driver-item[data-index]')).forEach(item => {
+            item.onclick = () => {
+                selectedDriverIndex = parseInt(item.dataset.index);
+                render();
+            };
+        });
+    }
+
+    function updateDriverForm(drivers) {
+        ensureSelectedIndex(drivers);
+        isUpdatingDriverForm = true;
+        const disabled = selectedDriverIndex < 0 || !drivers[selectedDriverIndex];
+        [driverTarget, driverType, driverX, driverY, driverStart, driverEnd, driverRadius, driverAngle].forEach(el => {
+            el.disabled = disabled;
+        });
+
+        if (!disabled) {
+            const d = drivers[selectedDriverIndex];
+            driverTarget.value = d.target;
+            driverType.value = d.type;
+            driverX.value = formatNum(d.origin[0]);
+            driverY.value = formatNum(d.origin[1]);
+            driverStart.value = formatNum(d.startVal);
+            driverEnd.value = formatNum(d.endVal);
+            driverRadius.value = formatNum(d.radius);
+            driverAngle.value = formatNum(d.angle || 0);
+            driverAngle.disabled = d.type === 'RADIAL';
+        } else {
+            [driverX, driverY, driverStart, driverEnd, driverRadius, driverAngle].forEach(el => el.value = '');
+        }
+        isUpdatingDriverForm = false;
+    }
+
+    function updateSelectedDriverFromForm() {
+        if (isUpdatingDriverForm) return;
+        saveHistoryState();
+        const drivers = getCurrentDrivers();
+        if (selectedDriverIndex < 0 || !drivers[selectedDriverIndex]) return;
+        const d = drivers[selectedDriverIndex];
+        d.target = driverTarget.value;
+        d.type = driverType.value;
+        d.origin[0] = clamp01(parseFloat(driverX.value) || 0);
+        d.origin[1] = clamp01(parseFloat(driverY.value) || 0);
+        d.startVal = parseFloat(driverStart.value) || 0;
+        d.endVal = parseFloat(driverEnd.value) || 0;
+        d.radius = Math.max(0.01, parseFloat(driverRadius.value) || 0.01);
+        d.angle = parseFloat(driverAngle.value) || 0;
+        writeDrivers(drivers);
+        render();
+        autoSave();
+    }
+
+    function addDriver(target, type) {
+        saveHistoryState();
+        const drivers = getCurrentDrivers();
+        const d = {
+            target: target,
+            type: type,
+            origin: [0.5, 0.5],
+            startVal: type === 'RADIAL' ? -0.4 : 0.8,
+            endVal: 0.0,
+            radius: type === 'RADIAL' ? 0.22 : 0.55,
+            angle: type === 'RADIAL' ? 0 : -90
+        };
+        drivers.push(d);
+        selectedDriverIndex = drivers.length - 1;
+        writeDrivers(drivers);
+        render();
+        autoSave();
+    }
+
+    function calculateClimate(ix, iy, w, h, drivers) {
+        const fx = ix / w;
+        const fy = iy / h;
+        
+        let temp = parseFloat(document.getElementById('baseT').value);
+        let moisture = parseFloat(document.getElementById('baseM').value);
+
+        drivers.forEach(d => {
+            const dx = fx - d.origin[0];
+            const dy = fy - d.origin[1];
+            let factor = 1.1;
+
+            if (d.type === "RADIAL") {
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                factor = dist / d.radius;
+            } else {
+                const rad = d.angle * (Math.PI / 180);
+                const cosA = Math.cos(rad);
+                const sinA = Math.sin(rad);
+                const projDist = (dx * cosA) + (dy * sinA);
+
+                if (d.type === "LINEAR") {
+                    if (projDist >= 0) factor = projDist / d.radius;
+                } else if (d.type === "MIRRORED") {
+                    factor = Math.abs(projDist) / d.radius;
+                }
+            }
+
+            if (factor <= 1.0) {
+                const valChange = d.startVal + (factor * (d.endVal - d.startVal));
+                if (d.target === "TEMP") temp += valChange;
+                if (d.target === "MOISTURE") moisture += valChange;
+            }
+        });
+
+        const noiseMult = parseFloat(document.getElementById('noiseMult').value);
+        const nT = noiseGrid[ix % 100][iy % 100];
+        const nM = noiseGrid[(ix + 50) % 100][(iy + 50) % 100];
+        
+        temp += (nT * noiseMult);
+        moisture += (nM * noiseMult);
+
+        return { 
+            t: Math.max(0, Math.min(1, temp)), 
+            m: Math.max(0, Math.min(1, moisture)) 
+        };
+    }
+
+    function getClimateBand(value, thresholds) {
+        for (let i = 0; i < thresholds.length; i++) {
+            if (value < thresholds[i]) return i;
+        }
+        return thresholds.length;
+    }
+
+    function stableRoll(ix, iy, salt, max) {
+        let n = ((ix + 1) * 73856093) ^ ((iy + 1) * 19349663) ^ (salt * 83492791);
+        n = Math.abs(n);
+        return n % max;
+    }
+
+    function resolveTableEntry(entry, ix, iy, salt) {
+        if (entry === null || entry === undefined) return null;
+        if (!Array.isArray(entry)) return entry;
+        if (entry.length === 0) return null;
+
+        if (Array.isArray(entry[0])) {
+            let total = 0;
+            entry.forEach(item => total += item[1]);
+            if (total <= 0) return null;
+
+            const roll = stableRoll(ix, iy, salt, total);
+            let running = 0;
+            for (let i = 0; i < entry.length; i++) {
+                running += entry[i][1];
+                if (roll < running) return entry[i][0];
+            }
+            return entry[entry.length - 1][0];
+        }
+
+        return entry[stableRoll(ix, iy, salt, entry.length)];
+    }
+
+    function getTerrainName(climate, ix, iy) {
+        const tempBand = getClimateBand(climate.t, TEMP_THRESHOLDS);
+        const moistureBand = getClimateBand(climate.m, MOISTURE_THRESHOLDS);
+        return resolveTableEntry(BIOME_TABLE[tempBand][moistureBand], ix, iy, 11);
+    }
+
+    function canHaveClimateFeature(featureName, terrainName) {
+        if (featureName === null || featureName === undefined) return false;
+        if (featureName === "Jungle") return terrainName === "Grassland";
+        if (featureName === "Deciduous") return terrainName === "Grassland" || terrainName === "Plains";
+        if (featureName === "Pine") return terrainName === "Grassland" || terrainName === "Plains" || terrainName === "Tundra";
+        if (featureName === "Snow") return terrainName === "Snow" || terrainName === "Tundra";
+        return false;
+    }
+
+    function getFeatureName(climate, ix, iy) {
+        const tempBand = getClimateBand(climate.t, TEMP_THRESHOLDS);
+        const moistureBand = getClimateBand(climate.m, MOISTURE_THRESHOLDS);
+        const featureName = resolveTableEntry(FEATURE_TABLE[tempBand][moistureBand], ix, iy, 23);
+        const terrainName = getTerrainName(climate, ix, iy);
+
+        if (!canHaveClimateFeature(featureName, terrainName)) return null;
+
+        if (featureName === "Jungle") {
+            if (stableRoll(ix, iy, 31, 100) < 60) return featureName;
+            return null;
+        }
+
+        if (stableRoll(ix, iy, 37, 100) < 40) return featureName;
+        return null;
+    }
+
+    function getMoistureColor(m) {
+        if (m >= MOISTURE_THRESHOLDS[2]) return '#22888b'; 
+        if (m >= MOISTURE_THRESHOLDS[1]) return '#228B22'; 
+        if (m >= MOISTURE_THRESHOLDS[0]) return '#8B4513'; 
+        return '#F0E68C';             
+    }
+
+    function getTempColor(t) {
+        if (t < TEMP_THRESHOLDS[0]) return '#FFFFFF';
+        if (t < TEMP_THRESHOLDS[1]) return '#A7C7E7';
+        if (t < TEMP_THRESHOLDS[2]) return '#90EE90';
+        return '#DC143C';
+    }
+
+    function getTerrainColor(name) {
+        if (name === "Snow") return '#FFFFFF';
+        if (name === "Tundra") return '#C9C2A3';
+        if (name === "Desert") return '#EEDC9A';
+        if (name === "Plains") return '#C8A957';
+        if (name === "Grassland") return '#4EAD3C';
+        return '#222';
+    }
+
+    function getFeatureColor(name) {
+        if (name === "Snow") return '#DDEBFF';
+        if (name === "Pine") return '#005A2B';
+        if (name === "Deciduous") return '#B7D948';
+        if (name === "Jungle") return '#00A6A6';
+        return '#333';
+    }
+
+    function getDisplayValue(climate, ix, iy) {
+        if (viewMode === 'TEMP') return climate.t;
+        if (viewMode === 'MOISTURE') return climate.m;
+        if (viewMode === 'TERRAIN') return getTerrainName(climate, ix, iy);
+        return getFeatureName(climate, ix, iy);
+    }
+
+    function getDisplayColor(value) {
+        if (viewMode === 'TEMP') return getTempColor(value);
+        if (viewMode === 'MOISTURE') return getMoistureColor(value);
+        if (viewMode === 'TERRAIN') return getTerrainColor(value);
+        return getFeatureColor(value);
+    }
+
+    function getDisplayLabel(value) {
+        if (typeof value === 'number') return value.toFixed(2);
+        if (value === null || value === undefined) return "";
+        return value.charAt(0);
+    }
+
+    function updateLegend() {
+        const area = document.getElementById('legendArea');
+        if (viewMode === 'TEMP') {
+            area.innerHTML = `
+                <div class="legend">
+                    <div class="legend-item"><div class="color-box" style="background:#FFFFFF"></div> Arctic &lt; 0.10</div>
+                    <div class="legend-item"><div class="color-box" style="background:#A7C7E7"></div> Cold &lt; 0.25</div>
+                    <div class="legend-item"><div class="color-box" style="background:#90EE90"></div> Temperate &lt; 0.75</div>
+                    <div class="legend-item"><div class="color-box" style="background:#DC143C"></div> Tropical</div>
+                </div>`;
+        } else if (viewMode === 'MOISTURE') {
+            area.innerHTML = `
+                <div class="legend">
+                    <div class="legend-item"><div class="color-box" style="background:#F0E68C"></div> Arid &lt; 0.20</div>
+                    <div class="legend-item"><div class="color-box" style="background:#8B4513"></div> Dry &lt; 0.45</div>
+                    <div class="legend-item"><div class="color-box" style="background:#228B22"></div> Humid &lt; 0.75</div>
+                    <div class="legend-item"><div class="color-box" style="background:#22888b"></div> Wet</div>
+                </div>`;
+        } else if (viewMode === 'TERRAIN') {
+            area.innerHTML = `
+                <div class="legend">
+                    <div class="legend-item"><div class="color-box" style="background:#FFFFFF"></div> Snow</div>
+                    <div class="legend-item"><div class="color-box" style="background:#C9C2A3"></div> Tundra</div>
+                    <div class="legend-item"><div class="color-box" style="background:#EEDC9A"></div> Desert</div>
+                    <div class="legend-item"><div class="color-box" style="background:#C8A957"></div> Plains</div>
+                    <div class="legend-item"><div class="color-box" style="background:#4EAD3C"></div> Grassland</div>
+                </div>`;
+        } else {
+            area.innerHTML = `
+                <div class="legend">
+                    <div class="legend-item"><div class="color-box" style="background:#333"></div> None</div>
+                    <div class="legend-item"><div class="color-box" style="background:#DDEBFF"></div> Snow Forest</div>
+                    <div class="legend-item"><div class="color-box" style="background:#005A2B"></div> Pine</div>
+                    <div class="legend-item"><div class="color-box" style="background:#B7D948"></div> Deciduous</div>
+                    <div class="legend-item"><div class="color-box" style="background:#00A6A6"></div> Jungle</div>
+                </div>`;
+        }
+    }
+
+    function driverColor(d) {
+        return d.target === 'TEMP' ? '#ff6565' : '#55c8ff';
+    }
+
+    function climateToCanvas(x, y, w, h, p) {
+        return {
+            x: x * w * p,
+            y: (1 - y) * h * p
+        };
+    }
+
+    function canvasToClimate(x, y, w, h, p) {
+        return {
+            x: clamp01(x / (w * p)),
+            y: clamp01(1 - (y / (h * p)))
+        };
+    }
+
+    function getLinearEnd(d) {
+        const rad = (d.angle || 0) * (Math.PI / 180);
+        return {
+            x: d.origin[0] + Math.cos(rad) * d.radius,
+            y: d.origin[1] + Math.sin(rad) * d.radius
+        };
+    }
+
+    function drawArrow(from, to, color) {
+        const angle = Math.atan2(to.y - from.y, to.x - from.x);
+        const head = 13;
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.moveTo(from.x, from.y);
+        ctx.lineTo(to.x, to.y);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(to.x, to.y);
+        ctx.lineTo(to.x - head * Math.cos(angle - Math.PI / 6), to.y - head * Math.sin(angle - Math.PI / 6));
+        ctx.lineTo(to.x - head * Math.cos(angle + Math.PI / 6), to.y - head * Math.sin(angle + Math.PI / 6));
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    function drawHandle(pt, selected, shape) {
+        ctx.save();
+        ctx.fillStyle = selected ? '#ffffff' : '#f4fff6';
+        ctx.strokeStyle = selected ? '#06130a' : '#183b22';
+        ctx.lineWidth = 2;
+        if (shape === 'square') {
+            ctx.fillRect(pt.x - 5, pt.y - 5, 10, 10);
+            ctx.strokeRect(pt.x - 5, pt.y - 5, 10, 10);
+        } else {
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, 6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+
+    function drawDriverOverlays(drivers, w, h, p) {
+        ctx.save();
+        drivers.forEach((d, i) => {
+            const selected = i === selectedDriverIndex;
+            const color = driverColor(d);
+            const origin = climateToCanvas(d.origin[0], d.origin[1], w, h, p);
+
+            ctx.globalAlpha = selected ? 1 : 0.72;
+            if (d.type === 'RADIAL') {
+                ctx.strokeStyle = color;
+                ctx.lineWidth = selected ? 6 : 5;
+                ctx.setLineDash([9, 5]);
+                ctx.beginPath();
+                ctx.ellipse(origin.x, origin.y, Math.max(4, d.radius * w * p), Math.max(4, d.radius * h * p), 0, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                drawHandle(origin, selected, 'circle');
+                drawHandle({x: origin.x + d.radius * w * p, y: origin.y}, selected, 'square');
+            } else {
+                const endModel = getLinearEnd(d);
+                const end = climateToCanvas(endModel.x, endModel.y, w, h, p);
+                drawArrow(origin, end, color);
+                if (d.type === 'MIRRORED') {
+                    const mirror = climateToCanvas(d.origin[0] - (endModel.x - d.origin[0]), d.origin[1] - (endModel.y - d.origin[1]), w, h, p);
+                    drawArrow(origin, mirror, color);
+                }
+                drawHandle(origin, selected, 'circle');
+                drawHandle(end, selected, 'square');
+            }
+        });
+        ctx.restore();
+    }
+
+    function render() {
+        const w = parseInt(document.getElementById('mapW').value);
+        const h = parseInt(document.getElementById('mapH').value);
+        const p = parseInt(document.getElementById('pixelSize').value);
+        const drivers = getCurrentDrivers();
+
+        canvas.width = w * p;
+        canvas.height = h * p;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw Climate Grid
+        ctx.globalAlpha = 1.0;
+        for (let x = 0; x < w; x++) {
+            for (let y = 0; y < h; y++) {
+                const climate = calculateClimate(x, (h-1-y), w, h, drivers);
+                const val = getDisplayValue(climate, x, h - 1 - y);
+
+                if (renderMode === 'COLOR') {
+                    ctx.fillStyle = getDisplayColor(val);
+                    ctx.fillRect(x * p, y * p, p, p);
+                } else {
+                    ctx.fillStyle = '#333';
+                    ctx.fillRect(x * p, y * p, p, p);
+                    ctx.strokeStyle = '#444';
+                    ctx.strokeRect(x * p, y * p, p, p);
+                    ctx.fillStyle = 'white';
+                    ctx.font = `${p * 0.35}px sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.fillText(getDisplayLabel(val), x * p + p/2, y * p + p/1.5);
+                }
+            }
+        }
+
+        // Draw Overlay Image
+        if (overlayImg) {
+            ctx.globalAlpha = parseFloat(overlayOpacity.value);
+            const scale = parseFloat(bgScale.value) || 1;
+            const posX = parseFloat(bgPosX.value) || 0;
+            const posY = parseFloat(bgPosY.value) || 0;
+            ctx.drawImage(overlayImg, posX, posY, canvas.width * scale, canvas.height * scale);
+        }
+        ctx.globalAlpha = 1.0;
+        drawDriverOverlays(drivers, w, h, p);
+
+        updateDriverList(drivers);
+        updateDriverForm(drivers);
+        updateLegend();
+    }
+
+    function getCanvasMouse(e) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+            x: (e.clientX - rect.left) * (canvas.width / rect.width),
+            y: (e.clientY - rect.top) * (canvas.height / rect.height)
+        };
+    }
+
+    function pointDistance(a, b) {
+        const dx = a.x - b.x;
+        const dy = a.y - b.y;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function distanceToSegment(p, a, b) {
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const lenSq = dx * dx + dy * dy;
+        if (lenSq === 0) return pointDistance(p, a);
+        let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq;
+        t = Math.max(0, Math.min(1, t));
+        return pointDistance(p, {x: a.x + t * dx, y: a.y + t * dy});
+    }
+
+    function hitTestDriver(pos, drivers, w, h, p) {
+        for (let i = drivers.length - 1; i >= 0; i--) {
+            const d = drivers[i];
+            const origin = climateToCanvas(d.origin[0], d.origin[1], w, h, p);
+            if (pointDistance(pos, origin) <= 10) return {index: i, handle: 'origin'};
+
+            if (d.type === 'RADIAL') {
+                const radiusPt = {x: origin.x + d.radius * w * p, y: origin.y};
+                if (pointDistance(pos, radiusPt) <= 10) return {index: i, handle: 'radius'};
+
+                const rx = Math.max(1, d.radius * w * p);
+                const ry = Math.max(1, d.radius * h * p);
+                const ellipseValue = Math.sqrt(Math.pow((pos.x - origin.x) / rx, 2) + Math.pow((pos.y - origin.y) / ry, 2));
+                if (Math.abs(ellipseValue - 1) <= 0.08) return {index: i, handle: 'select'};
+            } else {
+                const endModel = getLinearEnd(d);
+                const end = climateToCanvas(endModel.x, endModel.y, w, h, p);
+                if (pointDistance(pos, end) <= 10) return {index: i, handle: 'end'};
+                if (distanceToSegment(pos, origin, end) <= 8) return {index: i, handle: 'select'};
+            }
+        }
+        return null;
+    }
+
+    function applyDrag(pos, e) {
+        if (!dragDriver) return;
+        const w = parseInt(document.getElementById('mapW').value);
+        const h = parseInt(document.getElementById('mapH').value);
+        const p = parseInt(document.getElementById('pixelSize').value);
+        const drivers = getCurrentDrivers();
+        const d = drivers[dragDriver.index];
+        if (!d) return;
+
+        const model = canvasToClimate(pos.x, pos.y, w, h, p);
+        if (dragDriver.handle === 'origin') {
+            let nx = model.x;
+            let ny = model.y;
+            if (e.shiftKey) {
+                if (Math.abs(pos.x - dragDriver.startMouse.x) > Math.abs(pos.y - dragDriver.startMouse.y)) {
+                    ny = dragDriver.startOrigin[1];
+                } else {
+                    nx = dragDriver.startOrigin[0];
+                }
+            }
+            d.origin = [nx, ny];
+        } else if (dragDriver.handle === 'radius') {
+            const dx = model.x - d.origin[0];
+            const dy = model.y - d.origin[1];
+            d.radius = Math.max(0.01, Math.sqrt(dx * dx + dy * dy));
+        } else if (dragDriver.handle === 'end') {
+            const dx = model.x - d.origin[0];
+            const dy = model.y - d.origin[1];
+            d.radius = Math.max(0.01, Math.sqrt(dx * dx + dy * dy));
+            d.angle = Math.atan2(dy, dx) * 180 / Math.PI;
+        }
+
+        writeDrivers(drivers);
+        render();
+    }
+
+    function loadOverlayImage() {
+        if (!overlayImageData) {
+            overlayImg = null;
+            imageUpload.value = '';
+            bgStatus.textContent = 'No Image';
+            return;
+        }
+        const img = new Image();
+        img.onload = () => {
+            overlayImg = img;
+            bgStatus.textContent = 'Loaded';
+            render();
+        };
+        img.src = overlayImageData;
+    }
+
+    uploadBgBtn.onclick = () => {
+        imageUpload.click();
+    };
+
+    // Image Upload Handler
+    imageUpload.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            saveHistoryState();
+            overlayImageData = event.target.result;
+            const img = new Image();
+            img.onload = () => {
+                overlayImg = img;
+                bgStatus.textContent = 'Loaded';
+                render();
+                autoSave();
+            };
+            img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    };
+
+    removeImageBtn.onclick = () => {
+        saveHistoryState();
+        overlayImg = null;
+        overlayImageData = null;
+        imageUpload.value = '';
+        bgStatus.textContent = 'No Image';
+        render();
+        autoSave();
+    };
+
+    function updateModeButtons() {
+        document.getElementById('viewTemp').classList.toggle('active', viewMode === 'TEMP');
+        document.getElementById('viewMoist').classList.toggle('active', viewMode === 'MOISTURE');
+        document.getElementById('viewTerrain').classList.toggle('active', viewMode === 'TERRAIN');
+        document.getElementById('viewFeature').classList.toggle('active', viewMode === 'FEATURE');
+        document.getElementById('modeColor').classList.toggle('active', renderMode === 'COLOR');
+        document.getElementById('modeNumeric').classList.toggle('active', renderMode === 'NUMERIC');
+    }
+
+    function bindSettingInput(id) {
+        const el = document.getElementById(id);
+        el.addEventListener('focus', () => {
+            settingsSnapshot = cloneData(getProjectData());
+        });
+        el.addEventListener('input', () => {
+            render();
+            autoSave();
+        });
+        el.addEventListener('change', () => {
+            if (settingsSnapshot && JSON.stringify(settingsSnapshot) !== JSON.stringify(getProjectData())) {
+                undoStack.push(settingsSnapshot);
+                if (undoStack.length > MAX_HISTORY) undoStack.shift();
+                redoStack = [];
+            }
+            settingsSnapshot = null;
+            autoSave();
+        });
+    }
+
+    // Event Listeners
+    ['mapW', 'mapH', 'pixelSize', 'baseT', 'baseM', 'noiseMult', 'overlayOpacity', 'bgPosX', 'bgPosY', 'bgScale'].forEach(bindSettingInput);
+
+    document.getElementById('themeToggleBtn').onclick = () => {
+        saveHistoryState();
+        document.body.classList.toggle('light-mode');
+        render();
+        autoSave();
+    };
+
+    document.getElementById('undoBtn').onclick = performUndo;
+    document.getElementById('redoBtn').onclick = performRedo;
+
+    document.getElementById('saveProjectBtn').onclick = () => {
+        const blob = new Blob([JSON.stringify(getProjectData(), null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'gmf_climate_project.json';
+        a.click();
+    };
+
+    document.getElementById('loadProjectBtn').onclick = () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = e => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = ev => {
+                saveHistoryState();
+                applyProjectData(JSON.parse(ev.target.result));
+                autoSave();
+            };
+            reader.readAsText(file);
+        };
+        input.click();
+    };
+
+    document.getElementById('loadDriversBtn').onclick = () => {
+        const drivers = parseDrivers(importArea.value);
+        if (drivers.length === 0 && importArea.value.trim()) return;
+        saveHistoryState();
+        selectedDriverIndex = drivers.length > 0 ? 0 : -1;
+        writeDrivers(drivers);
+        render();
+        autoSave();
+    };
+
+    document.getElementById('generateDriversBtn').onclick = () => {
+        outputArea.value = getCurrentDrivers().map(formatDriver).join('\n');
+    };
+
+    document.getElementById('copyDriversBtn').onclick = () => {
+        outputArea.select();
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(outputArea.value);
+        } else {
+            document.execCommand('copy');
+        }
+    };
+
+    [driverTarget, driverType].forEach(el => {
+        el.addEventListener('change', updateSelectedDriverFromForm);
+    });
+    [driverX, driverY, driverStart, driverEnd, driverRadius, driverAngle].forEach(el => {
+        el.addEventListener('change', updateSelectedDriverFromForm);
+    });
+
+    document.getElementById('addTempLinear').onclick = () => addDriver('TEMP', 'LINEAR');
+    document.getElementById('addMoistLinear').onclick = () => addDriver('MOISTURE', 'LINEAR');
+    document.getElementById('addTempRadial').onclick = () => addDriver('TEMP', 'RADIAL');
+    document.getElementById('addMoistRadial').onclick = () => addDriver('MOISTURE', 'RADIAL');
+
+    document.getElementById('duplicateDriver').onclick = () => {
+        const drivers = getCurrentDrivers();
+        if (selectedDriverIndex < 0 || !drivers[selectedDriverIndex]) return;
+        saveHistoryState();
+        const d = JSON.parse(JSON.stringify(drivers[selectedDriverIndex]));
+        d.origin = [clamp01(d.origin[0] + 0.04), clamp01(d.origin[1] + 0.04)];
+        drivers.splice(selectedDriverIndex + 1, 0, d);
+        selectedDriverIndex += 1;
+        writeDrivers(drivers);
+        render();
+        autoSave();
+    };
+
+    document.getElementById('deleteDriver').onclick = () => {
+        const drivers = getCurrentDrivers();
+        if (selectedDriverIndex < 0 || !drivers[selectedDriverIndex]) return;
+        saveHistoryState();
+        drivers.splice(selectedDriverIndex, 1);
+        if (selectedDriverIndex >= drivers.length) selectedDriverIndex = drivers.length - 1;
+        writeDrivers(drivers);
+        render();
+        autoSave();
+    };
+
+    canvas.addEventListener('mousedown', e => {
+        const w = parseInt(document.getElementById('mapW').value);
+        const h = parseInt(document.getElementById('mapH').value);
+        const p = parseInt(document.getElementById('pixelSize').value);
+        const drivers = getCurrentDrivers();
+        const pos = getCanvasMouse(e);
+        const hit = hitTestDriver(pos, drivers, w, h, p);
+        if (!hit) return;
+
+        selectedDriverIndex = hit.index;
+        render();
+        if (hit.handle === 'select') return;
+
+        saveHistoryState();
+        dragDriver = {
+            index: hit.index,
+            handle: hit.handle,
+            startMouse: pos,
+            startOrigin: [drivers[hit.index].origin[0], drivers[hit.index].origin[1]]
+        };
+        e.preventDefault();
+    });
+
+    window.addEventListener('mousemove', e => {
+        if (!dragDriver) return;
+        applyDrag(getCanvasMouse(e), e);
+    });
+
+    window.addEventListener('mouseup', () => {
+        if (dragDriver) autoSave();
+        dragDriver = null;
+    });
+
+    document.getElementById('viewTemp').onclick = (e) => { 
+        saveHistoryState();
+        viewMode = 'TEMP'; 
+        e.target.classList.add('active'); 
+        document.getElementById('viewMoist').classList.remove('active');
+        document.getElementById('viewTerrain').classList.remove('active');
+        document.getElementById('viewFeature').classList.remove('active');
+        render();
+        autoSave();
+    };
+    document.getElementById('viewMoist').onclick = (e) => { 
+        saveHistoryState();
+        viewMode = 'MOISTURE'; 
+        e.target.classList.add('active'); 
+        document.getElementById('viewTemp').classList.remove('active');
+        document.getElementById('viewTerrain').classList.remove('active');
+        document.getElementById('viewFeature').classList.remove('active');
+        render();
+        autoSave();
+    };
+    document.getElementById('viewTerrain').onclick = (e) => {
+        saveHistoryState();
+        viewMode = 'TERRAIN';
+        e.target.classList.add('active');
+        document.getElementById('viewTemp').classList.remove('active');
+        document.getElementById('viewMoist').classList.remove('active');
+        document.getElementById('viewFeature').classList.remove('active');
+        render();
+        autoSave();
+    };
+    document.getElementById('viewFeature').onclick = (e) => {
+        saveHistoryState();
+        viewMode = 'FEATURE';
+        e.target.classList.add('active');
+        document.getElementById('viewTemp').classList.remove('active');
+        document.getElementById('viewMoist').classList.remove('active');
+        document.getElementById('viewTerrain').classList.remove('active');
+        render();
+        autoSave();
+    };
+    document.getElementById('modeColor').onclick = (e) => { 
+        saveHistoryState();
+        renderMode = 'COLOR'; 
+        e.target.classList.add('active'); 
+        document.getElementById('modeNumeric').classList.remove('active');
+        render();
+        autoSave();
+    };
+    document.getElementById('modeNumeric').onclick = (e) => { 
+        saveHistoryState();
+        renderMode = 'NUMERIC'; 
+        e.target.classList.add('active'); 
+        document.getElementById('modeColor').classList.remove('active');
+        render();
+        autoSave();
+    };
+
+    window.addEventListener('keydown', e => {
+        if (e.ctrlKey && e.key.toLowerCase() === 'z') {
+            e.preventDefault();
+            if (e.shiftKey) performRedo();
+            else performUndo();
+        } else if (e.ctrlKey && e.key.toLowerCase() === 'y') {
+            e.preventDefault();
+            performRedo();
+        }
+    });
+
+    writeDrivers(parseDrivers(importArea.value));
+    loadAutoSave();
+    render();
+</script>
+</body>
+</html>
+

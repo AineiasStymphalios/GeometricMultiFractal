@@ -1,0 +1,1117 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+	<title>Civ4 GMF - Plot Generator</title>
+	<style>
+		/* THEME VARIABLES */
+		:root {
+			/* Dark Mode (Default) */
+			--bg-app: #1a2a2a;
+			--bg-container: #2c3e3b;
+			--bg-panel: #1f3331;
+			--bg-group: #2a423f;
+			--bg-input: #fef2dd;
+			--bg-canvas: #1e2e2c;
+			--bg-canvas-inner: #d9e2e8;
+			
+			--text-main: #fef2dd;
+			--text-label: #ffeca2;
+			--text-input: #1a2a2a;
+			--text-badge: #ffde9c;
+			
+			--border-accent: #ffcd84;
+			--btn-primary: #f4bc5e;
+			--btn-text: #1a2a2a;
+			--shadow: rgba(0,0,0,0.5);
+			--grid-color: rgba(255,255,255,0.15);
+		}
+
+		body.light-mode {
+			/* Light Mode */
+			--bg-app: #eef2f3;
+			--bg-container: #ffffff;
+			--bg-panel: #f8f9fa;
+			--bg-group: #e9ecef;
+			--bg-input: #ffffff;
+			--bg-canvas: #dee2e6;
+			--bg-canvas-inner: #ffffff;
+			
+			--text-main: #2c3e50; /* Dark Slate */
+			--text-label: #546e7a;
+			--text-input: #2c3e50;
+			--text-badge: #2c3e50;
+			
+			--border-accent: #cfd8dc;
+			--btn-primary: #4a6b66;
+			--btn-text: #ffffff;
+			--shadow: rgba(0,0,0,0.1);
+			--grid-color: rgba(0,0,0,0.1);
+		}
+
+		* { box-sizing: border-box; user-select: none; }
+		body {
+			background: var(--bg-app);
+			font-family: 'Segoe UI', system-ui, sans-serif;
+			margin: 0; padding: 20px;
+			display: flex; justify-content: center; align-items: center;
+			color: var(--text-main);
+			transition: background 0.3s ease;
+		}
+		.app-container {
+			background: var(--bg-container); border-radius: 32px; padding: 20px;
+			box-shadow: 0 20px 35px var(--shadow); max-width: 2000px; width: 100%;
+		}
+		.top-row { display: flex; gap: 20px; margin-bottom: 24px; flex-wrap: wrap; }
+		
+		.controls-col { flex: 0 0 auto; width: 300px; display: flex; flex-direction: column; gap: 12px; }
+		.controls-panel {
+			background: var(--bg-panel); border-radius: 28px; padding: 18px;
+			border: 1px solid var(--border-accent); overflow: hidden; transition: all 0.2s ease;
+		}
+		.controls-panel.collapsed { padding: 10px; height: 60px; }
+		.controls-panel.collapsed .controls-content { display: none; }
+
+		.gear-btn {
+			background: var(--btn-primary); border: none; font-size: 14px; cursor: pointer;
+			color: var(--btn-text); width: 100%; text-align: center; padding: 8px;
+			border-radius: 40px; margin-bottom: 12px; font-weight: bold; text-transform: uppercase;
+		}
+		.collapsed .gear-btn { margin-bottom: 0; }
+
+		.control-group { background: var(--bg-group); border-radius: 20px; padding: 10px 14px; margin-bottom: 12px; }
+		.control-group label { font-size: 0.7rem; color: var(--text-label); display: block; margin-bottom: 6px; font-weight: 800; }
+		
+		.flex-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+		input, select { 
+			background: var(--bg-input); color: var(--text-input); border: 1px solid var(--border-accent); 
+			border-radius: 30px; padding: 6px 12px; font-family: monospace; font-weight: bold; 
+		}
+		.number-input { width: 85px; text-align: center; }
+		
+		.btn { background: var(--btn-primary); color: var(--btn-text); border: none; font-weight: bold; padding: 6px 14px; border-radius: 40px; cursor: pointer; font-size: 0.8rem; transition: 0.1s; font-family: inherit; }
+		.btn-danger { background: #da6b5c; color: white; }
+		.btn-mini { background: var(--btn-primary); color: var(--btn-text); border: none; font-weight: bold; padding: 4px 10px; border-radius: 12px; cursor: pointer; font-size: 0.65rem; text-transform: uppercase; }
+		.btn-toggle { background: #4a6b66; color: white; }
+		.btn-toggle.active { background: #ffeca2; color: #1a2a2a; }
+		
+		.badge { background: var(--bg-group); border-radius: 30px; padding: 4px 12px; font-size: 0.7rem; color: var(--text-badge); border: 1px solid var(--border-accent); }
+		
+		.canvas-col { flex: 2.5; min-width: 400px; }
+		.canvas-container {
+			background: var(--bg-canvas); border-radius: 24px; padding: 12px;
+			box-shadow: inset 0 0 0 2px var(--border-accent), 0 8px 18px rgba(0,0,0,0.2);
+			overflow: auto; display: flex; justify-content: center; align-items: center; height: 100%; min-height: 500px;
+		}
+		canvas { display: block; background-color: var(--bg-canvas-inner); cursor: crosshair; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transform-origin: center center; }
+
+		.right-col { flex: 1.15; min-width: 360px; display: flex; flex-direction: column; gap: 20px; }
+		.properties-card { background: var(--bg-panel); border-radius: 24px; padding: 18px; border-left: 6px solid var(--btn-primary); color: var(--text-main); }
+		.region-card { background: var(--bg-panel); border-radius: 28px; padding: 18px; border: 1px solid var(--border-accent); }
+		
+		.region-list { 
+			background: var(--bg-group); 
+			border-radius: 20px; 
+			padding: 10px; 
+			max-height: 350px;
+			overflow-y: auto; 
+		}
+
+		/* Add these new rules to remove the "newline" behavior and use a 3-column grid */
+		.props-grid {
+			display: grid;
+			grid-template-columns: 1fr 1fr 1fr; /* Three columns */
+			gap: 10px;
+			margin-top: 10px;
+		}
+
+		/* Make the Name field span the full width so it's easier to type in */
+		.props-grid .prop-field:first-child {
+			grid-column: span 2;
+		}
+
+		.prop-field label {
+			font-size: 0.6rem;
+			color: var(--text-label);
+			display: block;
+			margin-bottom: 4px;
+			font-weight: 800;
+			text-transform: uppercase;
+		}
+
+		.prop-field input, .prop-field select {
+			width: 100%; /* Ensure inputs fill their grid cell */
+			font-size: 0.8rem;
+		}
+		
+		
+		.region-item {
+			background: var(--bg-canvas); margin: 5px 0; padding: 6px 10px; border-radius: 30px;
+			cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+			transition: 0.1s; border-left: 3px solid var(--btn-primary); font-size: 0.75rem; color: var(--text-main);
+		}
+		.region-item.selected { background: var(--btn-primary); color: var(--btn-text); font-weight: bold; border-left-color: white; }
+		.visibility-btn { background: none; border: none; cursor: pointer; font-size: 0.9rem; padding: 0 8px; color: var(--text-label); opacity: 0.3; }
+		.visibility-btn.visible { opacity: 1; }
+
+		.bottom-row { display: flex; gap: 20px; margin-top: 24px; }
+		.import-panel, .export-panel { flex: 1; background: var(--bg-panel); border: 1px solid var(--border-accent); border-radius: 24px; padding: 18px; }
+		textarea { width: 100%; background: var(--bg-canvas); color: var(--text-main); border-radius: 20px; padding: 14px; font-family: monospace; font-size: 0.85rem; resize: vertical; border: 1px solid var(--border-accent); }
+		.panel-title { color: var(--text-label); font-size: 0.85rem; font-weight: 800; text-transform: uppercase; display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+
+		.btn-flash { background: #70e497 !important; color: #1a2a2a !important; transform: scale(0.95); }
+		.copy-btn-flash { background: #ffffff !important; color: #1a2a2a !important; transform: scale(0.95); }
+		input[type=range] { width: 100%; margin: 10px 0; }
+	</style>
+</head>
+<body>
+<div class="app-container">
+	<div class="top-row">
+		<div class="controls-col">
+			<!-- Panel 1: System -->
+			<div class="controls-panel" id="panel1">
+				<button class="gear-btn" onclick="togglePanel('panel1')">⚙️ SYSTEM</button>
+				<div class="controls-content">
+					<div class="control-group">
+						<label>📂 PROJECT</label>
+						<div class="flex-row">
+							<button id="saveProjectBtn" class="btn-mini" style="flex:1">💾 SAVE</button>
+							<button id="loadProjectBtn" class="btn-mini" style="flex:1">📂 LOAD</button>
+						</div>
+						<div class="flex-row" style="margin-top: 8px;">
+							<button id="undoBtn" class="btn-mini" style="flex:1">↩️ UNDO</button>
+							<button id="redoBtn" class="btn-mini" style="flex:1">↪️ REDO</button>
+						</div>
+					</div>
+
+					<button id="themeToggleBtn" class="btn" style="width:100%; margin-bottom:12px;">🌓 TOGGLE THEME</button>
+
+					<div class="control-group">
+						<label>🗺️ CANVAS SIZE</label>
+						<div class="flex-row">
+							<input type="number" id="mapWidthInput" value="1000" style="width:75px"> x
+							<input type="number" id="mapHeightInput" value="700" style="width:75px">
+							<button id="applyMapSizeBtn" class="btn-mini">OK</button>
+							<input type="checkbox" id="rescaleToggle" checked style="width:auto; margin:0;">
+							<label style="margin:0; font-size: 0.6rem; opacity: 0.8;">RESCALE REGIONS</label>
+						</div>
+					</div>
+
+					<div class="control-group">
+						<label>🔲 GRID SIZE</label>
+						<div class="flex-row">
+							<input type="number" id="gridWInput" value="80" style="width:75px"> x
+							<input type="number" id="gridHInput" value="40" style="width:75px">
+							<button id="toggleGridBtn" class="btn-mini btn-toggle">GRID OFF</button>
+						</div>
+					</div>
+
+					<div class="control-group">
+						<label>🔎 ZOOM</label>
+						<div class="flex-row">
+							<input type="range" id="zoomSlider" min="0.1" max="2.5" step="0.01" value="1.0" style="flex:1">
+							<button id="snapZoomBtn" class="btn-mini">FIT</button>
+						</div>
+						<span id="zoomValue" class="badge">100%</span>
+					</div>
+				</div>
+			</div>
+			<!-- Panel 2: Background -->
+			<div class="controls-panel collapsed" id="panel2">
+				<button class="gear-btn" onclick="togglePanel('panel2')">🖼️ BACKGROUND</button>
+				<div class="controls-content">
+					<div class="flex-row" style="margin-bottom:8px;">
+						<button id="uploadBgBtn" class="btn" style="flex:1;">📁 UPLOAD</button>
+						<button id="clearBgBtn" class="btn btn-danger" style="flex:0 0 auto;" title="Clear Background">❌</button>
+					</div>
+					<div id="bgStatus" style="font-size:0.6rem; color:#aaa; margin-bottom:8px; text-align:center;">No Image</div>
+					<div class="control-group">
+						<label>📍 POSITION (X, Y)</label>
+						<div class="flex-row">
+							<input type="number" id="bgPosX" value="0" style="width:75px">
+							<input type="number" id="bgPosY" value="0" style="width:75px">
+						</div>
+					</div>
+					<div class="control-group">
+						<label>📏 SCALE (Multiplier)</label>
+						<input type="number" id="bgScaleInput" value="1.00" step="0.05" min="0.1" style="width:100%">
+					</div>
+					<div class="control-group">
+						<label>🌫️ OPACITY</label>
+						<input type="range" id="bgAlphaSlider" min="0" max="1" step="0.01" value="1.0" style="Height:10px">
+					</div>
+				</div>
+			</div>
+
+			<!-- Panel 3: Style -->
+			<div class="controls-panel collapsed" id="panel3">
+				<button class="gear-btn" onclick="togglePanel('panel3')">🎨 STYLE</button>
+				<div class="controls-content">
+					<div class="control-group">
+						<label>🔤 TEXT SIZE (PX)</label>
+						<input type="number" id="textSizeNumber" value="12" class="number-input">
+					</div>
+					<div class="control-group">
+						<label>🌫️ FILL OPACITY</label>
+						<input type="range" id="alphaSlider" min="0.1" max="1.0" step="0.01" value="0.55">
+					</div>
+					<div class="control-group">
+						<label>🖌️ BORDER WIDTH</label>
+						<input type="number" id="strokeNumber" value="2.2" step="0.5" class="number-input">
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="canvas-col">
+			<div class="canvas-container" id="canvasContainer">
+				<canvas id="mapCanvas" width="1000" height="700"></canvas>
+			</div>
+		</div>
+
+		<div class="right-col">
+			<div class="properties-card">
+				<div class="panel-title" style="justify-content:space-between;">
+					<strong>🧰 PROPERTIES</strong> <span id="selectionBadge" class="badge">⭕ none</span>
+				</div>
+				<div class="props-grid">
+					<div class="prop-field"><label>🏷️ NAME</label><input type="text" id="rectName" disabled></div>
+					<div class="prop-field"><label>⛰️ ALTITUDE</label>
+						<select id="rectAltitude" disabled>
+							<option>alpine</option><option>highland</option><option>plateau</option><option>flat</option><option>default</option><option>water</option>
+						</select>
+					</div>
+					<div class="prop-field"><label>🔷 TYPE</label>
+						<select id="regionType" disabled><option value="rect">Rect</option><option value="ellipse">Ellipse</option><option value="isotri">Isotri</option></select>
+					</div>
+					<div class="prop-field"><label>🔄 ANGLE (deg)</label><input type="number" id="angleDeg" step="1" disabled></div>
+					<div class="prop-field"><label>📍 X (0..1)</label><input type="number" id="normCX" step="0.001" min="0" max="1" disabled></div>
+					<div class="prop-field"><label>📍 Y (0..1)</label><input type="number" id="normCY" step="0.001" min="0" max="1" disabled></div>
+					<div class="prop-field"><label>📏 WIDTH (0..1)</label><input type="number" id="normW" step="0.001" min="0.01" max="1" disabled></div>
+					<div class="prop-field"><label>📐 HEIGHT (0..1)</label><input type="number" id="normH" step="0.001" min="0.01" max="1" disabled></div>
+					<div class="prop-field"><label>🌾 GRAIN</label>
+						<select id="grainType" disabled><option>ScatterGrain</option><option>BalanceGrain</option><option>GatherGrain</option></select>
+					</div>
+					<div class="prop-field"><label>⛰️ HILLS GRAIN</label>
+						<select id="hillsGrain" disabled><option>ScatterGrain</option><option>BalanceGrain</option><option>GatherGrain</option></select>
+					</div>
+					<div class="prop-field"><label>💧 WATER%</label><input type="number" id="waterPercent" step="1" min="0" max="100" disabled></div>
+				</div>
+			</div>
+			<div class="region-card">
+				<div class="region-actions">
+					<div style="display: flex; gap: 4px; margin-bottom: 8px;">
+						<button id="addRectBtn" class="btn" style="flex:1; padding: 6px 2px; font-size: 0.7rem;">🟦 RECT</button>
+						<button id="addEllipseBtn" class="btn" style="flex:1; padding: 6px 2px; font-size: 0.7rem;">🟣 ELLIPSE</button>
+						<button id="addIsotriBtn" class="btn" style="flex:1; padding: 6px 2px; font-size: 0.7rem;">🔺 ISOTRI</button>
+					</div>
+					<div style="display: flex; gap: 4px;">
+						<button id="duplicateBtn" class="btn" style="flex:1">📋 DUPLICATE</button>
+						<button id="deleteBtn" class="btn btn-danger" style="flex:1">🗑️ DEL</button>
+					</div>
+				</div>
+				<div class="region-list" id="regionListContainer"></div>
+				<div style="display: flex; gap: 4px; margin-top: 15px;">
+						<button id="moveUpBtn" class="btn">⬆️ UP</button>
+						<button id="moveDownBtn" class="btn">⬇️ DOWN</button>
+				</div>
+				<span style="font-size: 0.65rem; font-weight: 800; color: var(--text-label); text-transform: uppercase; line-height: 1.1;">
+					Draw Order (Top = First)
+				</span>
+			</div>
+		</div>
+	</div>
+
+	<div class="bottom-row">
+		<div class="import-panel">
+			<div class="panel-title"><strong>📥 IMPORT REGION LIST</strong><button id="doImportBtn" class="btn" style="margin-left:auto;">LOAD FROM TEXT</button></div>
+			<textarea id="importTextArea" rows="6" placeholder="Paste regions list..."></textarea>
+		</div>
+		<div class="export-panel">
+			<div class="panel-title"><strong>📄 EXPORT REGION LIST</strong>
+				<div style="display:flex; gap:12px; margin-left:auto;">
+					<button id="generateBtn" class="btn">⚙️ GENERATE</button>
+					<button id="copyOutputBtn" class="copy-btn btn">📋 COPY</button>
+				</div>
+			</div>
+			<textarea id="outputArea" rows="6" placeholder="Export result..."></textarea>
+		</div>
+	</div>
+</div>
+
+<script>
+	(function(){
+		// --- 1. STATE VARIABLES ---
+		let mapWidth = 1000, mapHeight = 700;
+		let zoom = 1.0;
+		let showGrid = false;
+		let gridW = 80, gridH = 40;
+		let regions = [];
+		let selectedIds = []; 
+		let marqueeRect = null; 
+		let dragSnapshot = []; 
+		let undoStack = [];
+		let redoStack = [];
+		const MAX_HISTORY = 50;
+		const STORAGE_KEY = 'gmf_plot_project';
+		const LEGACY_STORAGE_KEY = 'civ4_fractal_project';
+		let preDragState = null; // Used to track canvas interactions cleanly
+		
+		let backgroundImage = null;
+		let bgImageData = null; 
+		let bgAlpha = 1.0, bgPosX = 0, bgPosY = 0, bgScale = 1.0;
+		
+		let textSize = 12, globalAlpha = 0.55, strokeWidth = 2.2;
+
+		let isDragging = false, dragMode = null, activeHandle = null;
+		let dragStartMouse = { x:0, y:0 }, dragStartRegion = null;
+		const PROPERTY_FIELD_IDS = ['rectName','rectAltitude','regionType','angleDeg','normCX','normCY','normW','normH','grainType','hillsGrain','waterPercent'];
+
+		const canvas = document.getElementById('mapCanvas');
+		const ctx = canvas.getContext('2d');
+
+		// --- 2. WINDOW-SCOPED FUNCTIONS (For HTML UI) ---
+		window.togglePanel = (id) => document.getElementById(id).classList.toggle('collapsed');
+		
+		window.toggleVisibility = (id) => {
+			const r = regions.find(x => x.id === id);
+			if (r) { 
+				r.visible = (r.visible === false) ? true : false; 
+				redrawCanvas(); 
+				updateRegionList(); 
+				autoSave();
+			}
+		};
+
+		window.selectRegion = (id, event) => {
+			syncFocusedProperty();
+			if (event && event.shiftKey) {
+				if (selectedIds.includes(id)) selectedIds = selectedIds.filter(x => x !== id);
+				else selectedIds.push(id);
+			} else {
+				selectedIds = [id];
+			}
+			redrawCanvas(); 
+			updatePropertiesPanel(); 
+			updateRegionList();
+		};
+
+		// --- 3. CORE CANVAS LOGIC ---
+		function normToAbs(reg) {
+			const ax = reg.normX * mapWidth, ay = reg.normY * mapHeight;
+			const aw = reg.normW * mapWidth, ah = reg.normH * mapHeight;
+			return { x: ax - aw/2, y: ay - ah/2, w: aw, h: ah, cx: ax, cy: ay };
+		}
+		
+		function hitTestHandleOnRegion(reg, mx, my) {
+			const abs = normToAbs(reg);
+			const dx = mx - abs.cx, dy = my - abs.cy;
+			const rad = reg.angle * Math.PI / 180;
+			const lx = dx * Math.cos(rad) - dy * Math.sin(rad);
+			const ly = dx * Math.sin(rad) + dy * Math.cos(rad);
+			const hs = Math.max(6, 12/zoom);
+			
+			if (Math.abs(lx) <= hs && Math.abs(ly - (-abs.h/2 - 25/zoom)) <= hs) return { type: 'rotate', handle: 'rot' };
+			
+			const handles = [
+				{h:'nw', x:-abs.w/2, y:-abs.h/2}, {h:'ne', x:abs.w/2, y:-abs.h/2},
+				{h:'sw', x:-abs.w/2, y:abs.h/2}, {h:'se', x:abs.w/2, y:abs.h/2},
+				{h:'n', x:0, y:-abs.h/2}, {h:'s', x:0, y:abs.h/2},
+				{h:'e', x:abs.w/2, y:0}, {h:'w', x:-abs.w/2, y:0}
+			];
+			for (let handle of handles) {
+				if (Math.abs(lx - handle.x) <= hs && Math.abs(ly - handle.y) <= hs) {
+					return { type: 'resize', handle: handle.h };
+				}
+			}
+			return null;
+		}
+
+		function generateId() { return Date.now() + '-' + Math.random().toString(36).substr(2, 5); }
+
+		function redrawCanvas() {
+			canvas.width = mapWidth; canvas.height = mapHeight;
+			canvas.style.transform = `scale(${zoom})`;
+			ctx.clearRect(0, 0, mapWidth, mapHeight);
+
+			if (backgroundImage && backgroundImage.complete) {
+				ctx.save(); ctx.globalAlpha = bgAlpha;
+				const dw = backgroundImage.width * bgScale, dh = backgroundImage.height * bgScale;
+				ctx.drawImage(backgroundImage, (mapWidth/2 + bgPosX) - dw/2, (mapHeight/2 + bgPosY) - dh/2, dw, dh);
+				ctx.restore();
+			} else {
+				ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg-canvas-inner').trim() || "#d9e2e8";
+				ctx.fillRect(0,0,mapWidth,mapHeight);
+				ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--grid-color').trim() || "rgba(0,0,0,0.1)";
+				ctx.lineWidth = 0.5;
+				for(let i=0; i<Math.max(mapWidth, mapHeight); i+=40){
+					ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,mapHeight); ctx.stroke();
+					ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(mapWidth,i); ctx.stroke();
+				}
+			}
+
+			for (let reg of regions) {
+				if (reg.visible === false) continue;
+				const abs = normToAbs(reg);
+				const angleRad = -reg.angle * Math.PI / 180;
+				ctx.save();
+				ctx.translate(abs.cx, abs.cy); ctx.rotate(angleRad);
+				let baseColor = "rgba(245, 215, 110,"; // Default: Strong Golden Yellow (Warm/Sunlit)
+				if (reg.altitude === 'alpine') {
+					baseColor = "rgba(245, 250, 255,"; // Alpine: Bright Snow/Ice Blue
+				} else if (reg.altitude === 'highland') {
+					baseColor = "rgba(155, 115, 195,"; // Highland: Muted Amethyst (Purple)
+				} else if (reg.altitude === 'plateau') {
+					baseColor = "rgba(185, 140, 100,"; // Plateau: Earthy Ochre (Brown)
+				} else if (reg.altitude === 'flat') {
+					baseColor = "rgba(95, 175, 120,";  // Flat: Deep Emerald Green (Cool/Forest)
+				} else if (reg.altitude === 'water') {
+					baseColor = "rgba(90, 150, 210,";  // Water: Clear Azure (Steel Blue)
+				}
+				ctx.fillStyle = baseColor + globalAlpha + ")";
+				ctx.strokeStyle = "#2c3e50"; ctx.lineWidth = strokeWidth;
+				// Inside the for (let reg of regions) loop in redrawCanvas
+				if (reg.type === 'rect') { 
+					ctx.fillRect(-abs.w/2, -abs.h/2, abs.w, abs.h); 
+					ctx.strokeRect(-abs.w/2, -abs.h/2, abs.w, abs.h); 
+				} else if (reg.type === 'ellipse') { 
+					ctx.beginPath(); ctx.ellipse(0,0, abs.w/2, abs.h/2, 0, 0, Math.PI*2); ctx.fill(); ctx.stroke(); 
+				} else if (reg.type === 'isotri') {
+					ctx.beginPath();
+					ctx.moveTo(0, -abs.h * 2/3);           // Top Apex
+					ctx.lineTo(-abs.w/2, abs.h/3);        // Bottom Left
+					ctx.lineTo(abs.w/2, abs.h/3);         // Bottom Right
+					ctx.closePath();
+					ctx.fill(); ctx.stroke();
+				}
+				
+				// Draw Region Name
+				const fs = Math.min(textSize, Math.max(8, abs.w/8));
+				ctx.font = `bold ${fs}px sans-serif`; 
+				ctx.fillStyle = "#111"; 
+				ctx.fillText(reg.name, -abs.w/2 + 4, -abs.h/2 + fs + 2);
+				
+				// Draw Altitude under the Name
+				const altFs = Math.max(7, fs * 0.8);
+				ctx.font = `${altFs}px sans-serif`; 
+				ctx.fillStyle = "#222"; 
+				ctx.fillText(reg.altitude, -abs.w/2 + 4, -abs.h/2 + fs + altFs + 4);
+
+				ctx.restore();
+			}
+
+			if (showGrid) {
+				ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--grid-color').trim() || "rgba(255,255,255,0.4)";
+				ctx.lineWidth = 1;
+				const sx = mapWidth / gridW, sy = mapHeight / gridH;
+				ctx.beginPath();
+				for(let x=0; x <= mapWidth + 1; x += sx){ ctx.moveTo(x,0); ctx.lineTo(x,mapHeight); }
+				for(let y=0; y <= mapHeight + 1; y += sy){ ctx.moveTo(0,y); ctx.lineTo(mapWidth,y); }
+				ctx.stroke();
+			}
+
+			selectedIds.forEach(id => {
+				const sel = regions.find(r => r.id === id);
+				if (!sel || sel.visible === false) return;
+				const abs = normToAbs(sel);
+				ctx.save(); ctx.translate(abs.cx, abs.cy); ctx.rotate(-sel.angle * Math.PI / 180);
+				ctx.strokeStyle = "#ffaa33"; ctx.setLineDash([5/zoom, 5/zoom]); ctx.lineWidth = 2/zoom;
+				if(sel.type==='rect') ctx.strokeRect(-abs.w/2, -abs.h/2, abs.w, abs.h);
+				else { ctx.beginPath(); ctx.ellipse(0,0, abs.w/2, abs.h/2, 0,0, Math.PI*2); ctx.stroke(); }
+				if (selectedIds.length === 1) {
+					const hs = Math.max(6, 12/zoom);
+					const drawH = (x,y) => { ctx.fillStyle="#ffb347"; ctx.fillRect(x-hs/2, y-hs/2, hs, hs); };
+					[[-abs.w/2, -abs.h/2], [abs.w/2, -abs.h/2], [-abs.w/2, abs.h/2], [abs.w/2, abs.h/2]].forEach(p=>drawH(p[0],p[1]));
+					[[0, -abs.h/2], [0, abs.h/2], [abs.w/2, 0], [-abs.w/2, 0]].forEach(p=>drawH(p[0],p[1]));
+					ctx.fillStyle="#f0982e"; ctx.beginPath(); ctx.arc(0, -abs.h/2 - 25/zoom, 10/zoom, 0, Math.PI*2); ctx.fill();
+				}
+				ctx.restore();
+			});
+
+			if (marqueeRect) {
+				ctx.strokeStyle = "rgba(0, 120, 215, 0.8)";
+				ctx.setLineDash([4, 2]); ctx.lineWidth = 1/zoom;
+				ctx.strokeRect(marqueeRect.x1, marqueeRect.y1, marqueeRect.x2 - marqueeRect.x1, marqueeRect.y2 - marqueeRect.y1);
+				ctx.fillStyle = "rgba(0, 120, 215, 0.1)";
+				ctx.fillRect(marqueeRect.x1, marqueeRect.y1, marqueeRect.x2 - marqueeRect.x1, marqueeRect.y2 - marqueeRect.y1);
+			}
+		}
+		function saveHistoryState() {
+			undoStack.push(JSON.parse(JSON.stringify(regions)));
+			if (undoStack.length > MAX_HISTORY) undoStack.shift();
+			redoStack = []; // Any new action destroys the "redo" future
+		}
+
+		function performUndo() {
+			if (undoStack.length === 0) return;
+			redoStack.push(JSON.parse(JSON.stringify(regions))); // Save current to redo
+			regions = undoStack.pop();
+			// Clean up selection if an undone region no longer exists
+			selectedIds = selectedIds.filter(id => regions.some(r => r.id === id));
+			redrawCanvas(); updatePropertiesPanel(); updateRegionList(); autoSave();
+		}
+
+		function performRedo() {
+			if (redoStack.length === 0) return;
+			undoStack.push(JSON.parse(JSON.stringify(regions))); // Save current back to undo
+			regions = redoStack.pop();
+			selectedIds = selectedIds.filter(id => regions.some(r => r.id === id));
+			redrawCanvas(); updatePropertiesPanel(); updateRegionList(); autoSave();
+		}
+		
+		function moveSelectedRegions(direction) {
+			if (selectedIds.length === 0) return;
+			
+			// Get indices and sort them to move as a block
+			let indices = selectedIds.map(id => regions.findIndex(r => r.id === id)).sort((a, b) => a - b);
+			
+			// Boundary checks: Can't move up if top item is at index 0, or down if at the end
+			if (direction === -1 && indices[0] === 0) return;
+			if (direction === 1 && indices[indices.length - 1] === regions.length - 1) return;
+
+			saveHistoryState();
+
+			// If moving down, process indices from bottom to top to avoid overwriting
+			if (direction === 1) indices.reverse();
+
+			indices.forEach(i => {
+				const targetIndex = i + direction;
+				// Swap items in the array
+				[regions[i], regions[targetIndex]] = [regions[targetIndex], regions[i]];
+			});
+
+			redrawCanvas();
+			updateRegionList();
+			autoSave();
+		}
+		
+
+		// --- 4. DATA & UI SYNC ---
+		function updateRegionList() {
+			const container = document.getElementById('regionListContainer');
+			if(!container) return;
+			// Preserve scroll position across renders 
+			const scroll = container.scrollTop;
+			container.innerHTML = regions.map(r => `
+				<div class="region-item ${selectedIds.includes(r.id) ? 'selected' : ''}" onclick="window.selectRegion('${r.id}', event)">
+					<button class="visibility-btn ${r.visible !== false ? 'visible' : ''}" onclick="event.stopPropagation(); window.toggleVisibility('${r.id}')">
+						${r.visible !== false ? '👁️' : '🙈'}
+					</button>
+					<span class="region-name" style="flex:1">${r.name}</span>
+					<span>${r.type === 'rect' ? '▢' : '◯'}</span>
+				</div>`).join('');
+			container.scrollTop = scroll;
+		}
+
+		function updatePropertiesPanel() {
+			const fields = ['rectName', 'rectAltitude', 'regionType', 'angleDeg', 'normCX', 'normCY', 'normW', 'normH', 'grainType', 'hillsGrain', 'waterPercent'];
+			if (selectedIds.length === 0) {
+				fields.forEach(f => document.getElementById(f).disabled = true);
+				document.getElementById('selectionBadge').innerText = "⭕ none"; return;
+			}
+			fields.forEach(f => document.getElementById(f).disabled = false);
+			const isMultiple = selectedIds.length > 1;
+			if (isMultiple) ['normCX', 'normCY', 'normW', 'normH', 'angleDeg'].forEach(f => document.getElementById(f).disabled = true);
+			document.getElementById('selectionBadge').innerText = isMultiple ? `🔷 ${selectedIds.length} selected` : "🔷 1 selected";
+			const r = regions.find(x => x.id === selectedIds[0]);
+			document.getElementById('rectName').value = isMultiple ? "Multiple..." : r.name;
+			document.getElementById('rectAltitude').value = r.altitude;
+			document.getElementById('regionType').value = r.type;
+			document.getElementById('angleDeg').value = Math.round(r.angle);
+			document.getElementById('normCX').value = r.normX.toFixed(3);
+			document.getElementById('normCY').value = (1 - r.normY).toFixed(3);
+			document.getElementById('normW').value = r.normW.toFixed(3);
+			document.getElementById('normH').value = r.normH.toFixed(3);
+			document.getElementById('grainType').value = r.grain;
+			document.getElementById('hillsGrain').value = r.hillsGrain;
+			document.getElementById('waterPercent').value = r.waterPercent;
+		}
+
+		function syncProperties() {
+			if (selectedIds.length === 0) return;
+			const beforeState = JSON.stringify(regions);
+			selectedIds.forEach(id => {
+				const r = regions.find(x => x.id === id);
+				if (!r) return;
+				if (selectedIds.length === 1) {
+					r.name = document.getElementById('rectName').value;
+					r.angle = parseFloat(document.getElementById('angleDeg').value) || 0;
+					r.normX = parseFloat(document.getElementById('normCX').value);
+					r.normY = 1 - parseFloat(document.getElementById('normCY').value);
+					r.normW = parseFloat(document.getElementById('normW').value);
+					r.normH = parseFloat(document.getElementById('normH').value);
+				}
+				r.altitude = document.getElementById('rectAltitude').value;
+				r.type = document.getElementById('regionType').value;
+				r.grain = document.getElementById('grainType').value;
+				r.hillsGrain = document.getElementById('hillsGrain').value;
+				r.waterPercent = parseInt(document.getElementById('waterPercent').value) || 0;
+			});
+			if (beforeState !== JSON.stringify(regions)) {
+				undoStack.push(JSON.parse(beforeState));
+				if (undoStack.length > MAX_HISTORY) undoStack.shift();
+				redoStack = [];
+			}
+			redrawCanvas(); updateRegionList(); autoSave();
+		}
+
+		function syncFocusedProperty() {
+			if (document.activeElement && PROPERTY_FIELD_IDS.includes(document.activeElement.id)) {
+				syncProperties();
+			}
+		}
+
+		// --- 5. SAVE / LOAD / PROJECT LOGIC ---
+		function getProjectData() {
+			return {
+				mapWidth, mapHeight, zoom, gridW, gridH, showGrid,
+				bgAlpha, bgPosX, bgPosY, bgScale, bgImageData,
+				textSize, globalAlpha, strokeWidth, regions,
+				theme: document.body.classList.contains('light-mode') ? 'light' : 'dark'
+			};
+		}
+
+		function applyProjectData(data) {
+			mapWidth = data.mapWidth || 1000; mapHeight = data.mapHeight || 700;
+			zoom = data.zoom || 1.0;
+			gridW = data.gridW || 80; gridH = data.gridH || 40;
+			showGrid = !!data.showGrid;
+			bgAlpha = data.bgAlpha || 1.0; bgPosX = data.bgPosX || 0; bgPosY = data.bgPosY || 0; bgScale = data.bgScale || 1.0;
+			bgImageData = data.bgImageData || null;
+			textSize = data.textSize || 12; globalAlpha = data.globalAlpha || 0.55; strokeWidth = data.strokeWidth || 2.2;
+			regions = data.regions || [];
+			selectedIds = [];
+			
+			if (data.theme === 'light') document.body.classList.add('light-mode');
+			else document.body.classList.remove('light-mode');
+
+			if (bgImageData) {
+				backgroundImage = new Image();
+				backgroundImage.onload = () => { document.getElementById('bgStatus').innerText = '✅ Loaded'; redrawCanvas(); };
+				backgroundImage.src = bgImageData;
+			} else { backgroundImage = null; document.getElementById('bgStatus').innerText = 'No Image'; }
+
+			document.getElementById('mapWidthInput').value = mapWidth;
+			document.getElementById('mapHeightInput').value = mapHeight;
+			document.getElementById('zoomSlider').value = zoom;
+			document.getElementById('zoomValue').innerText = Math.round(zoom * 100) + '%';
+			document.getElementById('gridWInput').value = gridW;
+			document.getElementById('gridHInput').value = gridH;
+			document.getElementById('bgScaleInput').value = bgScale;
+			document.getElementById('toggleGridBtn').innerText = showGrid ? "GRID ON" : "GRID OFF";
+			document.getElementById('toggleGridBtn').classList.toggle('active', showGrid);
+			
+			redrawCanvas(); updatePropertiesPanel(); updateRegionList();
+		}
+
+		function autoSave() {
+			const data = getProjectData();
+			try {
+				localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+				localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(data));
+			} catch(e) {
+				try {
+					const fallback = JSON.parse(JSON.stringify(data));
+					fallback.bgImageData = null;
+					localStorage.setItem(STORAGE_KEY, JSON.stringify(fallback));
+					localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(fallback));
+				} catch(ignore) {}
+			}
+		}
+		function autoLoad() {
+			const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
+			if (saved) { try { applyProjectData(JSON.parse(saved)); } catch(e) {} }
+		}
+
+		// --- 6. MOUSE & KEYBOARD INTERACTION ---
+		function getCanvasMouse(e){
+			const r = canvas.getBoundingClientRect();
+			return { x: (e.clientX - r.left) * (canvas.width/r.width), y: (e.clientY - r.top) * (canvas.height/r.height) };
+		}
+
+		function onMouseDown(e) {
+			syncFocusedProperty();
+			const m = getCanvasMouse(e);
+			let hit = null;
+			if (selectedIds.length === 1) {
+				const reg = regions.find(r => r.id === selectedIds[0]);
+				const h = hitTestHandleOnRegion(reg, m.x, m.y);
+				if (h) hit = { region: reg, handle: h };
+			}
+			if (!hit) {
+				for (let i = regions.length - 1; i >= 0; i--) {
+					if (regions[i].visible !== false && pointInRegion(regions[i], m.x, m.y)) { hit = { region: regions[i], handle: null }; break; }
+				}
+			}
+			if (hit) {
+				if (!e.shiftKey && !selectedIds.includes(hit.region.id)) selectedIds = [hit.region.id];
+				else if (e.shiftKey && !selectedIds.includes(hit.region.id)) selectedIds.push(hit.region.id);
+				isDragging = true; dragStartMouse = m; dragMode = hit.handle ? hit.handle.type : 'move';
+				activeHandle = hit.handle ? hit.handle.handle : null;
+				dragSnapshot = selectedIds.map(id => {
+					const r = regions.find(x => x.id === id);
+					const abs = normToAbs(r);
+					return { id: r.id, normX: r.normX, normY: r.normY, absX: abs.x, absY: abs.y, absW: abs.w, absH: abs.h, angle: r.angle };
+				});
+				if (selectedIds.length === 1) {
+					const s = dragSnapshot[0];
+					dragStartRegion = { x: s.absX, y: s.absY, w: s.absW, h: s.absH, angle: s.angle };
+				}
+			} else {
+				if (!e.shiftKey) selectedIds = [];
+				dragMode = 'marquee'; isDragging = true; dragStartMouse = m; marqueeRect = { x1: m.x, y1: m.y, x2: m.x, y2: m.y };
+			}
+			preDragState = JSON.stringify(regions); // Snapshot before drag begins
+			redrawCanvas(); updatePropertiesPanel(); updateRegionList();
+		}
+
+		function onMouseMove(e) {
+			if (!isDragging) return;
+			const mouse = getCanvasMouse(e);
+			let dx = mouse.x - dragStartMouse.x, dy = mouse.y - dragStartMouse.y;
+			if (dragMode === 'move' && e.shiftKey) {
+				if (Math.abs(dx) >= Math.abs(dy)) dy = 0;
+				else dx = 0;
+			}
+			if (dragMode === 'marquee') { marqueeRect.x2 = mouse.x; marqueeRect.y2 = mouse.y; } 
+			else if (dragMode === 'move') {
+				selectedIds.forEach(id => {
+					const reg = regions.find(r => r.id === id), snap = dragSnapshot.find(s => s.id === id);
+					if(reg && snap) { reg.normX = snap.normX + (dx / mapWidth); reg.normY = snap.normY + (dy / mapHeight); }
+				});
+			} 
+			else if (selectedIds.length === 1) {
+				const reg = regions.find(r => r.id === selectedIds[0]);
+				if (dragMode.startsWith('resize')) {
+					const rad = reg.angle * Math.PI / 180;
+					const ldx = dx * Math.cos(rad) - dy * Math.sin(rad), ldy = dx * Math.sin(rad) + dy * Math.cos(rad);
+					let nw = dragStartRegion.w, nh = dragStartRegion.h;
+					if (activeHandle.includes('e')) nw += ldx * 2;
+					if (activeHandle.includes('w')) nw -= ldx * 2;
+					if (activeHandle.includes('s')) nh += ldy * 2;
+					if (activeHandle.includes('n')) nh -= ldy * 2;
+					if (nw < 10) nw = 10;
+					if (nh < 10) nh = 10;
+					reg.normW = nw/mapWidth; reg.normH = nh/mapHeight;
+					reg.normX = (dragStartRegion.x + dragStartRegion.w/2)/mapWidth;
+					reg.normY = (dragStartRegion.y + dragStartRegion.h/2)/mapHeight;
+				}
+				else if (dragMode === 'rotate') {
+					const abs = normToAbs(reg), startAng = Math.atan2(dragStartMouse.y - abs.cy, dragStartMouse.x - abs.cx), curAng = Math.atan2(mouse.y - abs.cy, mouse.x - abs.cx);
+					// Changed + to - to invert drag direction, and added bounds logic
+					reg.angle = (dragStartRegion.angle - (curAng - startAng) * 180 / Math.PI) % 360; 
+					if (reg.angle < 0) reg.angle += 360; // Keeps angles clean between 0 and 359
+				}
+			}
+			redrawCanvas(); updatePropertiesPanel(); updateRegionList();
+		}
+
+		function onMouseUp() {
+			if (!isDragging) return;
+			
+			// Detect if a region was moved/resized/rotated and save it to history
+			if (dragMode !== 'marquee' && preDragState) {
+				const postDragState = JSON.stringify(regions);
+				if (preDragState !== postDragState) {
+					undoStack.push(JSON.parse(preDragState));
+					redoStack = [];
+				}
+			}
+			
+			if (dragMode === 'marquee' && marqueeRect) {
+				const xmin = Math.min(marqueeRect.x1, marqueeRect.x2), xmax = Math.max(marqueeRect.x1, marqueeRect.x2), ymin = Math.min(marqueeRect.y1, marqueeRect.y2), ymax = Math.max(marqueeRect.y1, marqueeRect.y2);
+				regions.forEach(r => {
+					const abs = normToAbs(r);
+					if (abs.cx >= xmin && abs.cx <= xmax && abs.cy >= ymin && abs.cy <= ymax) if (!selectedIds.includes(r.id)) selectedIds.push(r.id);
+				});
+			}
+			isDragging = false; marqueeRect = null; dragSnapshot = []; redrawCanvas(); updatePropertiesPanel(); updateRegionList(); autoSave();
+		}
+
+		function pointInRegion(reg, mx, my){
+			const abs = normToAbs(reg);
+			let dx=mx-abs.cx, dy=my-abs.cy; 
+			const rad = reg.angle * Math.PI / 180; // <-- REMOVED minus sign here
+			const lx = dx*Math.cos(rad)-dy*Math.sin(rad), ly = dx*Math.sin(rad)+dy*Math.cos(rad);
+			
+			if(reg.type==='rect') return Math.abs(lx)<=abs.w/2 && Math.abs(ly)<=abs.h/2;
+			if(reg.type==='ellipse') return (lx*lx)/(abs.w*abs.w/4) + (ly*ly)/(abs.h*abs.h/4) <= 1;
+			if(reg.type==='isotri') {
+				if (ly < -abs.h * 2/3 || ly > abs.h/3) return false; // Vertical bounds
+				let halfWidthAtY = (abs.w / 2) * ((ly + (abs.h * 2/3)) / abs.h);
+				return Math.abs(lx) <= halfWidthAtY;
+			}
+			return false;
+		}
+
+		// --- 7. INITIALIZATION & BINDING ---
+		function bindEvents(){
+			document.getElementById('moveUpBtn').onclick = () => moveSelectedRegions(-1);
+			document.getElementById('moveDownBtn').onclick = () => moveSelectedRegions(1);
+			document.getElementById('undoBtn').onclick = performUndo;
+			document.getElementById('redoBtn').onclick = performRedo;
+			
+			document.getElementById('addRectBtn').onclick = () => { 
+				saveHistoryState(); const id = generateId();
+				regions.push({id: id, name:'Rect'+(regions.length+1), type:'rect', normX:0.5, normY:0.5, normW:0.2, normH:0.2, angle:0, altitude:'default', grain:'BalanceGrain', hillsGrain:'BalanceGrain', waterPercent:0, visible:true}); 
+				selectedIds = [id]; // Set cursor to new item
+				redrawCanvas(); updatePropertiesPanel(); updateRegionList(); autoSave(); 
+			};
+			document.getElementById('addEllipseBtn').onclick = () => { 
+				saveHistoryState(); const id = generateId();
+				regions.push({id: id, name:'Ellipse'+(regions.length+1), type:'ellipse', normX:0.5, normY:0.5, normW:0.2, normH:0.2, angle:0, altitude:'default', grain:'BalanceGrain', hillsGrain:'BalanceGrain', waterPercent:0, visible:true}); 
+				selectedIds = [id]; // Set cursor to new item
+				redrawCanvas(); updatePropertiesPanel(); updateRegionList(); autoSave(); 
+			};
+			document.getElementById('addIsotriBtn').onclick = () => { 
+				saveHistoryState(); const id = generateId();
+				regions.push({id: id, name:'Isotri'+(regions.length+1), type:'isotri', normX:0.5, normY:0.5, normW:0.2, normH:0.2, angle:0, altitude:'default', grain:'BalanceGrain', hillsGrain:'BalanceGrain', waterPercent:0, visible:true}); 
+				selectedIds = [id]; // Set cursor to new item
+				redrawCanvas(); updatePropertiesPanel(); updateRegionList(); autoSave(); 
+			};
+			
+			// Duplicate Selected Items
+			document.getElementById('duplicateBtn').onclick = () => {
+				if (selectedIds.length === 0) return;
+				saveHistoryState();
+				let newIds = [];
+				selectedIds.forEach(id => {
+					const r = regions.find(x => x.id === id);
+					if (r) {
+						const newId = generateId();
+						// Offset new region (disabled)
+						const offsetW = 0 / mapWidth;
+						const offsetH = 0 / mapHeight;
+						regions.push({
+							...r, 
+							id: newId, 
+							name: r.name + ' Copy',
+							normX: Math.min(1, r.normX + offsetW),
+							normY: Math.min(1, r.normY + offsetH)
+						});
+						newIds.push(newId);
+					}
+				});
+				selectedIds = newIds; // Move cursor to the newly duplicated items
+				redrawCanvas(); updatePropertiesPanel(); updateRegionList(); autoSave();
+			};
+
+			document.getElementById('deleteBtn').onclick = () => { 
+				if (selectedIds.length > 0) { 
+					saveHistoryState(); 
+					regions = regions.filter(r => !selectedIds.includes(r.id)); 
+					selectedIds = []; 
+					redrawCanvas(); updatePropertiesPanel(); updateRegionList(); autoSave(); 
+				} 
+			};
+
+			// Clear Background Image
+			document.getElementById('clearBgBtn').onclick = () => {
+				bgImageData = null; 
+				backgroundImage = null; 
+				document.getElementById('bgStatus').innerText = 'No Image'; 
+				redrawCanvas(); 
+				autoSave();
+			};
+			
+			document.getElementById('saveProjectBtn').onclick = () => {
+				const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(getProjectData())], {type: 'application/json'}));
+				a.download = 'civ4_regions_project.json'; a.click();
+			};
+			document.getElementById('loadProjectBtn').onclick = () => {
+				const i = document.createElement('input'); i.type='file'; i.accept='.json';
+				i.onchange = e => {
+					const reader = new FileReader();
+					reader.onload = ev => applyProjectData(JSON.parse(ev.target.result));
+					reader.readAsText(e.target.files[0]);
+				}; i.click();
+			};
+			document.getElementById('themeToggleBtn').onclick = () => { document.body.classList.toggle('light-mode'); redrawCanvas(); autoSave(); };
+			document.getElementById('applyMapSizeBtn').onclick = () => { 
+				const newW = parseInt(document.getElementById('mapWidthInput').value), newH = parseInt(document.getElementById('mapHeightInput').value); 
+				if (!document.getElementById('rescaleToggle').checked) {
+					regions.forEach(reg => {
+						const absW = reg.normW * mapWidth, absH = reg.normH * mapHeight, absX = reg.normX * mapWidth, absY = reg.normY * mapHeight;
+						reg.normW = absW / newW; reg.normH = absH / newH; reg.normX = absX / newW; reg.normY = absY / newH;
+					});
+				}
+				mapWidth = newW; mapHeight = newH; redrawCanvas(); updatePropertiesPanel(); autoSave();
+			};
+			document.getElementById('toggleGridBtn').onclick = (e) => { 
+				showGrid = !showGrid; e.target.classList.toggle('active', showGrid); e.target.innerText = showGrid ? "GRID ON" : "GRID OFF"; redrawCanvas(); autoSave();
+			};
+			document.getElementById('gridWInput').oninput = (e) => { gridW = parseInt(e.target.value) || 1; redrawCanvas(); autoSave(); };
+			document.getElementById('gridHInput').oninput = (e) => { gridH = parseInt(e.target.value) || 1; redrawCanvas(); autoSave(); };
+			document.getElementById('zoomSlider').oninput = (e) => { zoom = parseFloat(e.target.value); document.getElementById('zoomValue').innerText = Math.round(zoom*100)+'%'; redrawCanvas(); autoSave(); };
+			document.getElementById('snapZoomBtn').onclick = () => { 
+				const container = document.getElementById('canvasContainer'); 
+				const scale = Math.min((container.clientWidth-40)/mapWidth, (container.clientHeight-40)/mapHeight); 
+				zoom = scale; document.getElementById('zoomSlider').value=scale; document.getElementById('zoomValue').innerText=Math.round(zoom*100)+'%'; redrawCanvas(); autoSave(); 
+			};
+			document.getElementById('uploadBgBtn').onclick = () => {
+				const i = document.createElement('input'); i.type='file'; i.accept='image/*';
+				i.onchange=e=>{ 
+					const reader = new FileReader();
+					reader.onload = ev => { bgImageData = ev.target.result; backgroundImage = new Image(); backgroundImage.onload = () => { document.getElementById('bgStatus').innerText = '✅ Loaded'; redrawCanvas(); autoSave(); }; backgroundImage.src = bgImageData; };
+					reader.readAsDataURL(e.target.files[0]);
+				}; i.click();
+			};
+			document.getElementById('bgAlphaSlider').oninput = (e) => { bgAlpha = parseFloat(e.target.value); redrawCanvas(); autoSave(); };
+			document.getElementById('bgPosX').oninput = e => { bgPosX = parseFloat(e.target.value)||0; redrawCanvas(); autoSave(); };
+			document.getElementById('bgPosY').oninput = e => { bgPosY = parseFloat(e.target.value)||0; redrawCanvas(); autoSave(); };
+			document.getElementById('bgScaleInput').oninput = e => { bgScale = parseFloat(e.target.value)||1; redrawCanvas(); autoSave(); };
+			document.getElementById('alphaSlider').oninput = (e) => { globalAlpha = parseFloat(e.target.value); redrawCanvas(); autoSave(); };
+			document.getElementById('textSizeNumber').oninput = (e) => { textSize = parseFloat(e.target.value) || 12; redrawCanvas(); autoSave(); };
+			document.getElementById('strokeNumber').oninput = (e) => { strokeWidth = parseFloat(e.target.value) || 1; redrawCanvas(); autoSave(); };
+			document.getElementById('addRectBtn').onclick = () => { regions.push({id:generateId(), name:'Rect'+(regions.length+1), type:'rect', normX:0.5, normY:0.5, normW:0.2, normH:0.2, angle:0, altitude:'default', grain:'BalanceGrain', hillsGrain:'BalanceGrain', waterPercent:0, visible:true}); redrawCanvas(); updateRegionList(); autoSave(); };
+			document.getElementById('addEllipseBtn').onclick = () => { regions.push({id:generateId(), name:'Ellipse'+(regions.length+1), type:'ellipse', normX:0.5, normY:0.5, normW:0.2, normH:0.2, angle:0, altitude:'default', grain:'BalanceGrain', hillsGrain:'BalanceGrain', waterPercent:0, visible:true}); redrawCanvas(); updateRegionList(); autoSave(); };
+			document.getElementById('deleteBtn').onclick = () => { if (selectedIds.length > 0) { regions = regions.filter(r => !selectedIds.includes(r.id)); selectedIds = []; redrawCanvas(); updatePropertiesPanel(); updateRegionList(); autoSave(); } };
+			// In bindEvents()
+			document.getElementById('generateBtn').onclick = () => {
+				const lines = regions.map(r => {
+					// We map the internal name to the Export name
+					let typeName = "Rect"; 
+					if (r.type === 'ellipse') typeName = "Ellipse";
+					if (r.type === 'isotri')  typeName = "Isotri";
+
+					return `\t("${r.name}", "${typeName}", ${r.normX.toFixed(3)}, ${(1-r.normY).toFixed(3)}, ${r.normW.toFixed(3)}, ${r.normH.toFixed(3)}, ${Math.round(r.angle)}, "${r.altitude}", ${r.grain}, ${r.hillsGrain}, ${r.waterPercent}),`;
+				});
+				document.getElementById('outputArea').value = "regions = [\n" + lines.join('\n') + "\n]";
+			};
+
+			document.getElementById('addIsotriBtn').onclick = () => { 
+				regions.push({
+					id: generateId(), 
+					name: 'Isotri' + (regions.length + 1), 
+					type: 'isotri', 
+					normX: 0.5, 
+					normY: 0.5, 
+					normW: 0.2, 
+					normH: 0.2, 
+					angle: 0, 
+					altitude: 'default', 
+					grain: 'BalanceGrain', 
+					hillsGrain: 'BalanceGrain', 
+					waterPercent: 0, 
+					visible: true
+				}); 
+				redrawCanvas(); 
+				updateRegionList(); 
+				autoSave(); 
+			};
+			
+			document.getElementById('copyOutputBtn').onclick = (e) => { navigator.clipboard.writeText(document.getElementById('outputArea').value); e.target.classList.add('copy-btn-flash'); setTimeout(()=>e.target.classList.remove('copy-btn-flash'),200); };
+			
+			// Warning added to Load From Text
+			document.getElementById('doImportBtn').onclick = (e) => { 
+				const text = document.getElementById('importTextArea').value;
+				if (!text.trim()) return;
+				
+				if (!confirm("Warning: This will clear all current regions from the canvas. Do you want to proceed?")) {
+					return;
+				}
+				
+				try {
+					// 1. Format the pasted text into something JS can read
+					let c = text.trim().replace(/^regions\s*=\s*/, '').replace(/\(/g, '[').replace(/\)/g, ']');
+					
+					// These variables must exist for the 'eval' to work
+					const ScatterGrain="ScatterGrain", BalanceGrain="BalanceGrain", GatherGrain="GatherGrain";
+					
+					if(!c.startsWith('[')) c = '[' + c + ']';
+					
+					// 2. Parse the string into an array
+					const parsed = eval('(' + c + ')');
+					
+					// 3. Convert the array into Region Objects
+					saveHistoryState();
+					regions = parsed.map((item, i) => {
+						// Logic to determine type
+						let type = 'rect'; 
+						let importName = String(item[1]).toLowerCase();
+						if (importName === 'ellipse') type = 'ellipse';
+						if (importName === 'isotri')  type = 'isotri';
+
+						return { 
+							id: generateId() + i, 
+							name: item[0], 
+							type: type, 
+							normX: item[2], 
+							normY: 1 - item[3], 
+							normW: item[4], 
+							normH: item[5], 
+							angle: item[6], 
+							altitude: item[7], 
+							grain: item[8], 
+							hillsGrain: item[9], 
+							waterPercent: item[10], 
+							visible: true 
+						};
+					});
+
+					// 4. Update UI
+					selectedIds = regions.length > 0 ? [regions[0].id] : [];
+					redrawCanvas(); 
+					updatePropertiesPanel(); 
+					updateRegionList(); 
+					autoSave();
+					
+				} catch(err) { 
+					console.error(err); 
+					alert("Failed to load regions. Please make sure the text format is correct.");
+				}
+			};
+			
+			PROPERTY_FIELD_IDS.forEach(id => {
+				const el = document.getElementById(id);
+				el.oninput = syncProperties;
+				el.onchange = syncProperties;
+			});
+			canvas.addEventListener('mousedown', onMouseDown); window.addEventListener('mousemove', onMouseMove); window.addEventListener('mouseup', onMouseUp);
+			window.addEventListener('keydown', (e) => {
+				// 1. Undo / Redo Shortcuts
+				if (e.ctrlKey && e.key.toLowerCase() === 'z') { e.preventDefault(); if (e.shiftKey) performRedo(); else performUndo(); return; }
+				if (e.ctrlKey && e.key.toLowerCase() === 'y') { e.preventDefault(); performRedo(); return; }
+
+				// Ignore keypresses if typing in an input box or nothing is selected
+				if (selectedIds.length === 0 || document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+				
+				const step = e.shiftKey ? 10 : 1; 
+				let dx = 0, dy = 0;
+				
+				// 2. Map arrow keys to movement
+				if (e.key === 'ArrowLeft') dx = -step; 
+				else if (e.key === 'ArrowRight') dx = step; 
+				else if (e.key === 'ArrowUp') dy = -step; 
+				else if (e.key === 'ArrowDown') dy = step;
+				
+				// 3. Handle Delete Key
+				else if (e.key === 'Delete' || e.key === 'Backspace') { 
+					saveHistoryState(); // <-- Saves state before deleting
+					regions = regions.filter(r => !selectedIds.includes(r.id)); 
+					selectedIds = []; 
+					redrawCanvas(); updateRegionList(); autoSave(); 
+					return; 
+				}
+				
+				// 4. Handle Arrow Key Movement
+				if (dx !== 0 || dy !== 0) { 
+					saveHistoryState(); // <-- Saves state before nudging with arrows
+					e.preventDefault(); 
+					selectedIds.forEach(id => { 
+						const r = regions.find(x => x.id === id); 
+						if(r) { r.normX += dx / mapWidth; r.normY += dy / mapHeight; } 
+					}); 
+					redrawCanvas(); updatePropertiesPanel(); autoSave(); 
+				}
+			});
+		}
+		function init(){ bindEvents(); autoLoad(); redrawCanvas(); updateRegionList(); }
+		init();
+	})();
+</script>
+
+</body>
+</html>
+

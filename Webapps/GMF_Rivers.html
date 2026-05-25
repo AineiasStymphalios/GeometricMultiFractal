@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+	<title>Civ4 GMF - River Editor</title>
+	<style>
+		:root {
+			--bg-app: #0e1a24;
+			--bg-container: #142638;
+			--bg-panel: #102131;
+			--bg-group: #1a3348;
+			--bg-input: #e8f4ff;
+			--bg-canvas: #0b1721;
+			--bg-canvas-inner: #dcecf7;
+			--text-main: #e8f4ff;
+			--text-label: #9fd5ff;
+			--text-input: #102131;
+			--text-badge: #d5ecff;
+			--border-accent: #4fa3d9;
+			--btn-primary: #49a6dc;
+			--btn-text: #06131f;
+			--shadow: rgba(0,0,0,0.45);
+			--grid-color: rgba(95,170,220,0.22);
+		}
+
+		body.light-mode {
+			--bg-app: #dfeef8;
+			--bg-container: #f7fbff;
+			--bg-panel: #eef7fd;
+			--bg-group: #d9edf9;
+			--bg-input: #ffffff;
+			--bg-canvas: #c9e2f2;
+			--bg-canvas-inner: #ffffff;
+			--text-main: #153247;
+			--text-label: #1d668f;
+			--text-input: #153247;
+			--text-badge: #153247;
+			--border-accent: #83bfdf;
+			--btn-primary: #236b91;
+			--btn-text: #ffffff;
+			--shadow: rgba(20,70,100,0.16);
+			--grid-color: rgba(30,100,140,0.14);
+		}
+
+		* { box-sizing: border-box; user-select: none; }
+		body {
+			background: var(--bg-app);
+			font-family: "Segoe UI", system-ui, sans-serif;
+			margin: 0;
+			padding: 20px;
+			color: var(--text-main);
+		}
+		.app-container {
+			background: var(--bg-container);
+			border-radius: 28px;
+			padding: 20px;
+			box-shadow: 0 20px 35px var(--shadow);
+			max-width: 2100px;
+			margin: 0 auto;
+		}
+		.top-row { display: flex; gap: 20px; align-items: stretch; flex-wrap: wrap; }
+		.controls-col { flex: 0 0 auto; width: 300px; display: flex; flex-direction: column; gap: 12px; }
+		.canvas-col { flex: 2.5; min-width: 520px; }
+		.right-col { flex: 1.15; min-width: 360px; display: flex; flex-direction: column; gap: 18px; }
+		.bottom-row { display: flex; gap: 20px; margin-top: 20px; }
+
+		.panel, .import-panel, .export-panel {
+			background: var(--bg-panel);
+			border: 1px solid var(--border-accent);
+			border-radius: 22px;
+			padding: 16px;
+		}
+		.panel.collapsed { height: 52px; overflow: hidden; padding: 9px; }
+		.panel.collapsed .panel-content { display: none; }
+		.panel-title {
+			color: var(--text-label);
+			font-size: 0.78rem;
+			font-weight: 800;
+			text-transform: uppercase;
+			margin-bottom: 10px;
+			display: flex;
+			align-items: center;
+			gap: 8px;
+		}
+		.gear-btn {
+			background: var(--btn-primary);
+			color: var(--btn-text);
+			width: 100%;
+			border: none;
+			border-radius: 30px;
+			padding: 8px;
+			font-weight: 800;
+			cursor: pointer;
+			text-transform: uppercase;
+			margin-bottom: 10px;
+		}
+		.collapsed .gear-btn { margin-bottom: 0; }
+		.group { background: var(--bg-group); border-radius: 18px; padding: 10px 12px; margin-bottom: 12px; }
+		.group label, .field label {
+			font-size: 0.62rem;
+			color: var(--text-label);
+			font-weight: 800;
+			text-transform: uppercase;
+			display: block;
+			margin-bottom: 5px;
+		}
+		.flex-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+		input, select, textarea {
+			background: var(--bg-input);
+			color: var(--text-input);
+			border: 1px solid var(--border-accent);
+			border-radius: 24px;
+			padding: 6px 10px;
+			font-family: monospace;
+			font-weight: bold;
+		}
+		input[type=range] { width: 100%; margin: 8px 0; }
+		textarea {
+			width: 100%;
+			border-radius: 16px;
+			background: var(--bg-canvas);
+			color: var(--text-main);
+			font-size: 0.82rem;
+			resize: vertical;
+			min-height: 150px;
+			user-select: text;
+		}
+		.btn, .btn-mini {
+			background: var(--btn-primary);
+			color: var(--btn-text);
+			border: none;
+			font-weight: 800;
+			border-radius: 30px;
+			cursor: pointer;
+			font-family: inherit;
+		}
+		.btn { padding: 7px 14px; font-size: 0.8rem; }
+		.btn-mini { padding: 5px 10px; font-size: 0.66rem; text-transform: uppercase; }
+		.btn-danger { background: #d95656; color: white; }
+		.btn-toggle { background: #24536f; color: white; }
+		.btn-toggle.active { background: #9fd5ff; color: #06131f; }
+		.badge {
+			background: var(--bg-group);
+			border: 1px solid var(--border-accent);
+			border-radius: 20px;
+			padding: 3px 9px;
+			font-size: 0.68rem;
+			color: var(--text-badge);
+			font-weight: 800;
+		}
+
+		.canvas-container {
+			background: var(--bg-canvas);
+			border-radius: 22px;
+			padding: 12px;
+			box-shadow: inset 0 0 0 2px var(--border-accent), 0 8px 18px rgba(0,0,0,0.22);
+			height: 100%;
+			min-height: 590px;
+			overflow: auto;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+		canvas {
+			display: block;
+			background: var(--bg-canvas-inner);
+			cursor: crosshair;
+			box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+			transform-origin: center center;
+		}
+		.list {
+			background: var(--bg-group);
+			border-radius: 18px;
+			padding: 9px;
+			max-height: 260px;
+			overflow-y: auto;
+		}
+		.list-item {
+			background: var(--bg-canvas);
+			color: var(--text-main);
+			border-left: 3px solid var(--btn-primary);
+			border-radius: 22px;
+			margin: 5px 0;
+			padding: 6px 9px;
+			font-size: 0.74rem;
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			gap: 7px;
+		}
+		.list-item.selected {
+			background: var(--btn-primary);
+			color: var(--btn-text);
+			font-weight: 800;
+		}
+		.visibility-btn {
+			background: none;
+			border: none;
+			cursor: pointer;
+			color: inherit;
+			opacity: 0.35;
+			font-size: 0.8rem;
+		}
+		.visibility-btn.visible { opacity: 1; }
+		.props-grid {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 10px;
+		}
+		.props-grid .wide { grid-column: span 2; }
+		.field input, .field select { width: 100%; font-size: 0.78rem; }
+		.import-panel, .export-panel { flex: 1; }
+	</style>
+</head>
+<body>
+<div class="app-container">
+	<div class="top-row">
+		<div class="controls-col">
+			<div class="panel" id="systemPanel">
+				<button class="gear-btn" onclick="togglePanel('systemPanel')">⚙️ System</button>
+				<div class="panel-content">
+					<div class="group">
+						<label>Project</label>
+						<div class="flex-row">
+							<button id="saveProjectBtn" class="btn-mini" style="flex:1">💾 Save</button>
+							<button id="loadProjectBtn" class="btn-mini" style="flex:1">📂 Load</button>
+						</div>
+						<div class="flex-row" style="margin-top:8px">
+							<button id="undoBtn" class="btn-mini" style="flex:1">↩️ Undo</button>
+							<button id="redoBtn" class="btn-mini" style="flex:1">↪️ Redo</button>
+						</div>
+					</div>
+					<button id="themeToggleBtn" class="btn" style="width:100%; margin-bottom:12px">🌓 Toggle Theme</button>
+					<div class="group">
+						<label>🗺️ Canvas Size</label>
+						<div class="flex-row">
+							<input type="number" id="mapWidthInput" value="1000" style="width:76px"> x
+							<input type="number" id="mapHeightInput" value="700" style="width:76px">
+							<button id="applyMapSizeBtn" class="btn-mini">OK</button>
+						</div>
+					</div>
+					<div class="group">
+						<label>🔲 Grid Size</label>
+						<div class="flex-row">
+							<input type="number" id="gridWInput" value="80" style="width:76px"> x
+							<input type="number" id="gridHInput" value="40" style="width:76px">
+							<button id="toggleGridBtn" class="btn-mini btn-toggle">Grid Off</button>
+						</div>
+					</div>
+					<div class="group">
+						<label>🔎 Zoom</label>
+						<div class="flex-row">
+							<input type="range" id="zoomSlider" min="0.1" max="2.5" step="0.01" value="1.0" style="flex:1">
+							<button id="fitZoomBtn" class="btn-mini">Fit</button>
+						</div>
+						<span id="zoomValue" class="badge">100%</span>
+					</div>
+				</div>
+			</div>
+
+			<div class="panel collapsed" id="backgroundPanel">
+				<button class="gear-btn" onclick="togglePanel('backgroundPanel')">🖼️ Background</button>
+				<div class="panel-content">
+					<div class="flex-row" style="margin-bottom:8px">
+						<button id="uploadBgBtn" class="btn" style="flex:1">📁 Upload</button>
+						<button id="clearBgBtn" class="btn btn-danger">❌ Clear</button>
+					</div>
+					<div id="bgStatus" class="badge" style="display:block; text-align:center; margin-bottom:10px">No Image</div>
+					<div class="group">
+						<label>🎯 Position X/Y</label>
+						<div class="flex-row">
+							<input type="number" id="bgPosX" value="0" style="width:80px">
+							<input type="number" id="bgPosY" value="0" style="width:80px">
+						</div>
+					</div>
+					<div class="group">
+						<label>📏 Scale</label>
+						<input type="number" id="bgScaleInput" value="1.00" step="0.05" min="0.1" style="width:100%">
+					</div>
+					<div class="group">
+						<label>🌫️ Opacity</label>
+						<input type="range" id="bgAlphaSlider" min="0" max="1" step="0.01" value="1.0">
+					</div>
+				</div>
+			</div>
+
+			<div class="panel collapsed" id="stylePanel">
+				<button class="gear-btn" onclick="togglePanel('stylePanel')">🎨 Style</button>
+				<div class="panel-content">
+					<div class="group">
+						<label>🖌️ Line Width</label>
+						<input type="number" id="lineWidthInput" value="4" step="0.5" min="1" style="width:100%">
+					</div>
+					<div class="group">
+						<label>⚪ Point Radius</label>
+						<input type="number" id="pointRadiusInput" value="6" step="1" min="2" style="width:100%">
+					</div>
+					<div class="group">
+						<label>➡️ Arrow Size</label>
+						<input type="number" id="arrowSizeInput" value="11" step="1" min="0" style="width:100%">
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="canvas-col">
+			<div class="canvas-container" id="canvasContainer">
+				<canvas id="mapCanvas" width="1000" height="700"></canvas>
+			</div>
+		</div>
+
+		<div class="right-col">
+			<div class="panel">
+				<div class="panel-title">🌊 River Properties <span id="selectionBadge" class="badge">none</span></div>
+				<div class="props-grid">
+					<div class="field wide"><label>Name</label><input type="text" id="riverName" disabled></div>
+					<div class="field"><label>Type</label><select id="riverType" disabled><option value="river">River</option><option value="waterway">Waterway</option></select></div>
+					<div class="field"><label>Meander</label><input type="number" id="riverMeander" step="0.01" min="0" disabled></div>
+					<div class="field"><label>Bridge Spacing</label><input type="number" id="bridgeSpacing" step="1" min="1" disabled></div>
+					<div class="field"><label>Point X</label><input type="number" id="pointX" step="0.001" min="0" max="1" disabled></div>
+					<div class="field"><label>Point Y</label><input type="number" id="pointY" step="0.001" min="0" max="1" disabled></div>
+				</div>
+			</div>
+
+			<div class="panel">
+				<div class="panel-title">Rivers</div>
+				<div class="flex-row" style="margin-bottom:8px">
+					<button id="addRiverBtn" class="btn-mini" style="flex:1">➕ River</button>
+					<button id="addWaterwayBtn" class="btn-mini" style="flex:1">➕ Waterway</button>
+					<button id="deleteRiverBtn" class="btn-mini btn-danger">🗑️ Delete</button>
+				</div>
+				<div class="flex-row" style="margin-bottom:8px">
+					<button id="duplicateRiverBtn" class="btn-mini" style="flex:1">📋 Duplicate</button>
+					<button id="reverseRiverBtn" class="btn-mini" style="flex:1">🔁 Reverse</button>
+					<button id="clearPointsBtn" class="btn-mini btn-danger">🧹 Clear Points</button>
+				</div>
+				<div class="flex-row" style="margin-bottom:8px">
+					<button id="deselectBtn" class="btn-mini" style="flex:1">⭕ Deselect</button>
+				</div>
+				<div class="list" id="riverList"></div>
+			</div>
+
+			<div class="panel">
+				<div class="panel-title">📍 Points</div>
+				<div class="flex-row" style="margin-bottom:8px">
+					<button id="deletePointBtn" class="btn-mini btn-danger" style="flex:1">🗑️ Delete Point</button>
+					<button id="insertPointBtn" class="btn-mini" style="flex:1">➕ Insert After</button>
+				</div>
+				<div class="list" id="pointList"></div>
+			</div>
+		</div>
+	</div>
+
+	<div class="bottom-row">
+		<div class="import-panel">
+			<div class="panel-title">📥 Import Python River Lists <button id="doImportBtn" class="btn-mini" style="margin-left:auto">Load</button></div>
+			<textarea id="importArea" placeholder="Paste definitions like:
+yellow = [
+    (0.343, 0.500),
+    (0.515, 0.513)
+]
+rivers.build(yellow, meander=0.2)"></textarea>
+		</div>
+		<div class="export-panel">
+			<div class="panel-title">📄 Export For addRivers <button id="exportBtn" class="btn-mini" style="margin-left:auto">Generate</button><button id="copyBtn" class="btn-mini">Copy</button></div>
+			<textarea id="outputArea" placeholder="Export result..."></textarea>
+		</div>
+	</div>
+</div>
+
+<script>
+(function(){
+	let mapWidth = 1000, mapHeight = 700;
+	let gridW = 80, gridH = 40, showGrid = false, zoom = 1.0;
+	let rivers = [];
+	let selectedRiverId = null, selectedPointIndex = -1;
+	let backgroundImage = null, bgImageData = null;
+	let bgAlpha = 1.0, bgPosX = 0, bgPosY = 0, bgScale = 1.0;
+	let lineWidth = 4, pointRadius = 6, arrowSize = 11;
+	let isDraggingPoint = false, dragStartMouse = null, dragStartPoint = null;
+	let undoStack = [], redoStack = [];
+	const MAX_HISTORY = 50;
+	const STORAGE_KEY = "gmf_rivers_project";
+	const canvas = document.getElementById("mapCanvas");
+	const ctx = canvas.getContext("2d");
+	const PROP_IDS = ["riverName","riverType","riverMeander","bridgeSpacing","pointX","pointY"];
+
+	window.togglePanel = function(id) {
+		document.getElementById(id).classList.toggle("collapsed");
+	};
+
+	function generateId() {
+		return Date.now() + "-" + Math.random().toString(36).substr(2, 5);
+	}
+
+	function getSelectedRiver() {
+		return rivers.find(function(r) { return r.id === selectedRiverId; }) || null;
+	}
+
+	function clamp(v, lo, hi) {
+		if (v < lo) return lo;
+		if (v > hi) return hi;
+		return v;
+	}
+
+	function normToCanvas(pt) {
+		return { x: pt.x * mapWidth, y: (1 - pt.y) * mapHeight };
+	}
+
+	function canvasToNorm(x, y) {
+		return { x: clamp(x / mapWidth, 0, 1), y: clamp(1 - (y / mapHeight), 0, 1) };
+	}
+
+	function getCanvasMouse(e) {
+		const r = canvas.getBoundingClientRect();
+		return {
+			x: (e.clientX - r.left) * (canvas.width / r.width),
+			y: (e.clientY - r.top) * (canvas.height / r.height)
+		};
+	}
+
+	function saveHistoryState() {
+		undoStack.push(JSON.parse(JSON.stringify(rivers)));
+		if (undoStack.length > MAX_HISTORY) undoStack.shift();
+		redoStack = [];
+	}
+
+	function performUndo() {
+		if (undoStack.length === 0) return;
+		redoStack.push(JSON.parse(JSON.stringify(rivers)));
+		rivers = undoStack.pop();
+		cleanupSelection();
+		redrawCanvas(); updatePanels(); autoSave();
+	}
+
+	function performRedo() {
+		if (redoStack.length === 0) return;
+		undoStack.push(JSON.parse(JSON.stringify(rivers)));
+		rivers = redoStack.pop();
+		cleanupSelection();
+		redrawCanvas(); updatePanels(); autoSave();
+	}
+
+	function cleanupSelection() {
+		const r = getSelectedRiver();
+		if (!r && rivers.length > 0) selectedRiverId = rivers[0].id;
+		if (rivers.length === 0) selectedRiverId = null;
+		const sel = getSelectedRiver();
+		if (!sel || selectedPointIndex >= sel.points.length) selectedPointIndex = -1;
+	}
+
+	function clearSelection() {
+		syncFocusedProperty();
+		selectedRiverId = null;
+		selectedPointIndex = -1;
+		redrawCanvas();
+		updatePanels();
+	}
+
+	function syncFocusedProperty() {
+		if (document.activeElement && PROP_IDS.includes(document.activeElement.id)) {
+			syncProperties();
+		}
+	}
+
+	function drawArrow(from, to, color, selected) {
+		if (arrowSize <= 0) return;
+		const dx = to.x - from.x, dy = to.y - from.y;
+		const len = Math.sqrt(dx * dx + dy * dy);
+		if (len < 24) return;
+		const mx = (from.x + to.x) / 2, my = (from.y + to.y) / 2;
+		const angle = Math.atan2(dy, dx);
+		const size = selected ? arrowSize + 2 : arrowSize;
+		ctx.save();
+		ctx.translate(mx, my);
+		ctx.rotate(angle);
+		ctx.fillStyle = color;
+		ctx.beginPath();
+		ctx.moveTo(size, 0);
+		ctx.lineTo(-size * 0.55, -size * 0.45);
+		ctx.lineTo(-size * 0.25, 0);
+		ctx.lineTo(-size * 0.55, size * 0.45);
+		ctx.closePath();
+		ctx.fill();
+		ctx.restore();
+	}
+
+	function drawGrid() {
+		if (!showGrid) return;
+		ctx.save();
+		ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--grid-color");
+		ctx.lineWidth = 0.5;
+		ctx.beginPath();
+		const sx = mapWidth / gridW, sy = mapHeight / gridH;
+		for (let x = 0; x <= mapWidth + 1; x += sx) { ctx.moveTo(x, 0); ctx.lineTo(x, mapHeight); }
+		for (let y = 0; y <= mapHeight + 1; y += sy) { ctx.moveTo(0, y); ctx.lineTo(mapWidth, y); }
+		ctx.stroke();
+		ctx.restore();
+	}
+
+	function redrawCanvas() {
+		canvas.width = mapWidth;
+		canvas.height = mapHeight;
+		canvas.style.transform = "scale(" + zoom + ")";
+		ctx.clearRect(0, 0, mapWidth, mapHeight);
+
+		if (backgroundImage && backgroundImage.complete) {
+			ctx.save();
+			ctx.globalAlpha = bgAlpha;
+			const dw = backgroundImage.width * bgScale, dh = backgroundImage.height * bgScale;
+			ctx.drawImage(backgroundImage, (mapWidth / 2 + bgPosX) - dw / 2, (mapHeight / 2 + bgPosY) - dh / 2, dw, dh);
+			ctx.restore();
+		} else {
+			ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--bg-canvas-inner");
+			ctx.fillRect(0, 0, mapWidth, mapHeight);
+		}
+
+		drawGrid();
+
+		rivers.forEach(function(river) {
+			if (river.visible === false) return;
+			const selected = river.id === selectedRiverId;
+			const color = river.type === "waterway" ? "#00a6c8" : "#1e73ff";
+			const stroke = selected ? "#ffb23d" : color;
+			const pts = river.points.map(normToCanvas);
+
+			if (pts.length > 1) {
+				ctx.save();
+				ctx.lineCap = "round";
+				ctx.lineJoin = "round";
+				ctx.strokeStyle = stroke;
+				ctx.lineWidth = (selected ? lineWidth + 2 : lineWidth);
+				ctx.beginPath();
+				ctx.moveTo(pts[0].x, pts[0].y);
+				for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+				ctx.stroke();
+				for (let i = 0; i < pts.length - 1; i++) drawArrow(pts[i], pts[i + 1], stroke, selected);
+				ctx.restore();
+			}
+
+			pts.forEach(function(p, idx) {
+				const pointSelected = selected && idx === selectedPointIndex;
+				ctx.save();
+				ctx.beginPath();
+				ctx.arc(p.x, p.y, pointSelected ? pointRadius + 3 : pointRadius, 0, Math.PI * 2);
+				ctx.fillStyle = "#ffffff";
+				ctx.fill();
+				ctx.lineWidth = pointSelected ? 3 : 2;
+				ctx.strokeStyle = pointSelected ? "#ff8c00" : "#1b1b1b";
+				ctx.stroke();
+				ctx.restore();
+			});
+		});
+	}
+
+	function escapeJs(value) {
+		return String(value).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+	}
+
+	function updateRiverList() {
+		const container = document.getElementById("riverList");
+		container.innerHTML = "";
+		rivers.forEach(function(r) {
+			const typeLabel = r.type === "waterway" ? "waterway" : "river";
+			const item = document.createElement("div");
+			item.className = "list-item" + (r.id === selectedRiverId ? " selected" : "");
+			item.onclick = function() { window.selectRiver(r.id); };
+
+			const visibleButton = document.createElement("button");
+			visibleButton.className = "visibility-btn" + (r.visible !== false ? " visible" : "");
+			visibleButton.innerText = r.visible !== false ? "on" : "off";
+			visibleButton.onclick = function(event) {
+				event.stopPropagation();
+				window.toggleRiverVisibility(r.id);
+			};
+
+			const name = document.createElement("span");
+			name.style.flex = "1";
+			name.innerText = r.name;
+
+			const type = document.createElement("span");
+			type.innerText = typeLabel;
+
+			const count = document.createElement("span");
+			count.innerText = r.points.length;
+
+			item.appendChild(visibleButton);
+			item.appendChild(name);
+			item.appendChild(type);
+			item.appendChild(count);
+			container.appendChild(item);
+		});
+	}
+
+	function updatePointList() {
+		const container = document.getElementById("pointList");
+		const r = getSelectedRiver();
+		if (!r) {
+			container.innerHTML = "";
+			return;
+		}
+		container.innerHTML = "";
+		r.points.forEach(function(p, i) {
+			const item = document.createElement("div");
+			item.className = "list-item" + (i === selectedPointIndex ? " selected" : "");
+			item.onclick = function() { window.selectPoint(i); };
+
+			const index = document.createElement("span");
+			index.style.width = "24px";
+			index.innerText = i;
+
+			const coords = document.createElement("span");
+			coords.style.flex = "1";
+			coords.innerText = "(" + p.x.toFixed(3) + ", " + p.y.toFixed(3) + ")";
+
+			item.appendChild(index);
+			item.appendChild(coords);
+			container.appendChild(item);
+		});
+	}
+
+	function updatePropertiesPanel() {
+		const r = getSelectedRiver();
+		const hasRiver = !!r;
+		document.getElementById("selectionBadge").innerText = hasRiver ? r.points.length + " points" : "none";
+		["riverName","riverType","riverMeander","bridgeSpacing"].forEach(function(id) {
+			document.getElementById(id).disabled = !hasRiver;
+		});
+		["pointX","pointY"].forEach(function(id) {
+			document.getElementById(id).disabled = !hasRiver || selectedPointIndex < 0;
+		});
+		if (!hasRiver) {
+			PROP_IDS.forEach(function(id) { document.getElementById(id).value = ""; });
+			return;
+		}
+		document.getElementById("riverName").value = r.name;
+		document.getElementById("riverType").value = r.type;
+		document.getElementById("riverMeander").value = r.meander;
+		document.getElementById("bridgeSpacing").value = r.bridgeSpacing;
+		if (selectedPointIndex >= 0 && r.points[selectedPointIndex]) {
+			document.getElementById("pointX").value = r.points[selectedPointIndex].x.toFixed(3);
+			document.getElementById("pointY").value = r.points[selectedPointIndex].y.toFixed(3);
+		} else {
+			document.getElementById("pointX").value = "";
+			document.getElementById("pointY").value = "";
+		}
+	}
+
+	function updatePanels() {
+		updateRiverList();
+		updatePointList();
+		updatePropertiesPanel();
+	}
+
+	function escapeHtml(value) {
+		return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+	}
+
+	window.selectRiver = function(id) {
+		syncFocusedProperty();
+		selectedRiverId = id;
+		selectedPointIndex = -1;
+		redrawCanvas(); updatePanels();
+	};
+
+	window.selectPoint = function(index) {
+		syncFocusedProperty();
+		selectedPointIndex = index;
+		redrawCanvas(); updatePanels();
+	};
+
+	window.toggleRiverVisibility = function(id) {
+		const r = rivers.find(function(item) { return item.id === id; });
+		if (!r) return;
+		saveHistoryState();
+		r.visible = r.visible === false;
+		redrawCanvas(); updatePanels(); autoSave();
+	};
+
+	function syncProperties() {
+		const r = getSelectedRiver();
+		if (!r) return;
+		const before = JSON.stringify(rivers);
+		r.name = document.getElementById("riverName").value || r.name;
+		r.type = document.getElementById("riverType").value;
+		r.meander = parseFloat(document.getElementById("riverMeander").value) || 0;
+		r.bridgeSpacing = parseInt(document.getElementById("bridgeSpacing").value, 10) || 4;
+		if (selectedPointIndex >= 0 && r.points[selectedPointIndex]) {
+			const x = parseFloat(document.getElementById("pointX").value);
+			const y = parseFloat(document.getElementById("pointY").value);
+			if (!isNaN(x)) r.points[selectedPointIndex].x = clamp(x, 0, 1);
+			if (!isNaN(y)) r.points[selectedPointIndex].y = clamp(y, 0, 1);
+		}
+		if (before !== JSON.stringify(rivers)) {
+			undoStack.push(JSON.parse(before));
+			if (undoStack.length > MAX_HISTORY) undoStack.shift();
+			redoStack = [];
+		}
+		redrawCanvas(); updatePanels(); autoSave();
+	}
+
+	function hitTestPoint(mouse) {
+		for (let rIndex = rivers.length - 1; rIndex >= 0; rIndex--) {
+			const r = rivers[rIndex];
+			if (r.visible === false) continue;
+			for (let i = r.points.length - 1; i >= 0; i--) {
+				const p = normToCanvas(r.points[i]);
+				const dx = mouse.x - p.x, dy = mouse.y - p.y;
+				if (Math.sqrt(dx * dx + dy * dy) <= Math.max(8, pointRadius + 4)) {
+					return { river: r, index: i };
+				}
+			}
+		}
+		return null;
+	}
+
+	function onMouseDown(e) {
+		syncFocusedProperty();
+		const mouse = getCanvasMouse(e);
+		const hit = hitTestPoint(mouse);
+		if (hit) {
+			selectedRiverId = hit.river.id;
+			selectedPointIndex = hit.index;
+			isDraggingPoint = true;
+			dragStartMouse = mouse;
+			dragStartPoint = { x: hit.river.points[hit.index].x, y: hit.river.points[hit.index].y };
+			saveHistoryState();
+			redrawCanvas(); updatePanels();
+			return;
+		}
+		const r = getSelectedRiver();
+		if (r) {
+			saveHistoryState();
+			const pt = canvasToNorm(mouse.x, mouse.y);
+			r.points.push(pt);
+			selectedPointIndex = r.points.length - 1;
+			redrawCanvas(); updatePanels(); autoSave();
+		}
+	}
+
+	function onMouseMove(e) {
+		if (!isDraggingPoint) return;
+		const r = getSelectedRiver();
+		if (!r || selectedPointIndex < 0) return;
+		const mouse = getCanvasMouse(e);
+		let dx = mouse.x - dragStartMouse.x, dy = mouse.y - dragStartMouse.y;
+		if (e.shiftKey) {
+			if (Math.abs(dx) >= Math.abs(dy)) dy = 0;
+			else dx = 0;
+		}
+		r.points[selectedPointIndex].x = clamp(dragStartPoint.x + dx / mapWidth, 0, 1);
+		r.points[selectedPointIndex].y = clamp(dragStartPoint.y - dy / mapHeight, 0, 1);
+		redrawCanvas(); updatePanels();
+	}
+
+	function onMouseUp() {
+		if (!isDraggingPoint) return;
+		isDraggingPoint = false;
+		dragStartMouse = null;
+		dragStartPoint = null;
+		autoSave();
+	}
+
+	function addRiver(type) {
+		saveHistoryState();
+		const id = generateId();
+		const name = type === "waterway" ? "waterway_" + (rivers.length + 1) : "river_" + (rivers.length + 1);
+		rivers.push({ id: id, name: name, type: type, meander: 0.2, bridgeSpacing: 4, visible: true, points: [] });
+		selectedRiverId = id;
+		selectedPointIndex = -1;
+		redrawCanvas(); updatePanels(); autoSave();
+	}
+
+	function deleteSelectedRiver() {
+		if (!selectedRiverId) return;
+		saveHistoryState();
+		rivers = rivers.filter(function(r) { return r.id !== selectedRiverId; });
+		selectedRiverId = rivers.length ? rivers[0].id : null;
+		selectedPointIndex = -1;
+		redrawCanvas(); updatePanels(); autoSave();
+	}
+
+	function deleteSelectedPoint() {
+		const r = getSelectedRiver();
+		if (!r || selectedPointIndex < 0) return;
+		saveHistoryState();
+		r.points.splice(selectedPointIndex, 1);
+		if (selectedPointIndex >= r.points.length) selectedPointIndex = r.points.length - 1;
+		redrawCanvas(); updatePanels(); autoSave();
+	}
+
+	function insertPointAfter() {
+		const r = getSelectedRiver();
+		if (!r) return;
+		saveHistoryState();
+		let idx = selectedPointIndex;
+		if (idx < 0) {
+			r.points.push({ x: 0.5, y: 0.5 });
+			selectedPointIndex = r.points.length - 1;
+		} else {
+			const a = r.points[idx];
+			const b = r.points[idx + 1] || a;
+			r.points.splice(idx + 1, 0, { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+			selectedPointIndex = idx + 1;
+		}
+		redrawCanvas(); updatePanels(); autoSave();
+	}
+
+	function duplicateRiver() {
+		const r = getSelectedRiver();
+		if (!r) return;
+		saveHistoryState();
+		const copy = JSON.parse(JSON.stringify(r));
+		copy.id = generateId();
+		copy.name = r.name + "_copy";
+		rivers.push(copy);
+		selectedRiverId = copy.id;
+		selectedPointIndex = -1;
+		redrawCanvas(); updatePanels(); autoSave();
+	}
+
+	function reverseRiver() {
+		const r = getSelectedRiver();
+		if (!r) return;
+		saveHistoryState();
+		r.points.reverse();
+		if (selectedPointIndex >= 0) selectedPointIndex = r.points.length - 1 - selectedPointIndex;
+		redrawCanvas(); updatePanels(); autoSave();
+	}
+
+	function clearPoints() {
+		const r = getSelectedRiver();
+		if (!r) return;
+		saveHistoryState();
+		r.points = [];
+		selectedPointIndex = -1;
+		redrawCanvas(); updatePanels(); autoSave();
+	}
+
+	function getProjectData() {
+		return {
+			mapWidth: mapWidth, mapHeight: mapHeight, gridW: gridW, gridH: gridH, showGrid: showGrid,
+			zoom: zoom, bgAlpha: bgAlpha, bgPosX: bgPosX, bgPosY: bgPosY, bgScale: bgScale,
+			bgImageData: bgImageData, lineWidth: lineWidth, pointRadius: pointRadius, arrowSize: arrowSize,
+			rivers: rivers, theme: document.body.classList.contains("light-mode") ? "light" : "dark"
+		};
+	}
+
+	function loadProjectData(data) {
+		mapWidth = data.mapWidth || 1000;
+		mapHeight = data.mapHeight || 700;
+		gridW = data.gridW || 80;
+		gridH = data.gridH || 40;
+		showGrid = !!data.showGrid;
+		zoom = data.zoom || 1.0;
+		bgAlpha = data.bgAlpha === undefined ? 1.0 : data.bgAlpha;
+		bgPosX = data.bgPosX || 0;
+		bgPosY = data.bgPosY || 0;
+		bgScale = data.bgScale || 1.0;
+		bgImageData = data.bgImageData || null;
+		lineWidth = data.lineWidth || 4;
+		pointRadius = data.pointRadius || 6;
+		arrowSize = data.arrowSize === undefined ? 11 : data.arrowSize;
+		rivers = data.rivers || [];
+		selectedRiverId = rivers.length ? rivers[0].id : null;
+		selectedPointIndex = -1;
+		document.body.classList.toggle("light-mode", data.theme === "light");
+		syncInputsFromState();
+		loadBackgroundImage();
+		redrawCanvas(); updatePanels();
+	}
+
+	function syncInputsFromState() {
+		document.getElementById("mapWidthInput").value = mapWidth;
+		document.getElementById("mapHeightInput").value = mapHeight;
+		document.getElementById("gridWInput").value = gridW;
+		document.getElementById("gridHInput").value = gridH;
+		document.getElementById("toggleGridBtn").innerText = showGrid ? "Grid On" : "Grid Off";
+		document.getElementById("toggleGridBtn").classList.toggle("active", showGrid);
+		document.getElementById("zoomSlider").value = zoom;
+		document.getElementById("zoomValue").innerText = Math.round(zoom * 100) + "%";
+		document.getElementById("bgPosX").value = bgPosX;
+		document.getElementById("bgPosY").value = bgPosY;
+		document.getElementById("bgScaleInput").value = bgScale;
+		document.getElementById("bgAlphaSlider").value = bgAlpha;
+		document.getElementById("lineWidthInput").value = lineWidth;
+		document.getElementById("pointRadiusInput").value = pointRadius;
+		document.getElementById("arrowSizeInput").value = arrowSize;
+	}
+
+	function loadBackgroundImage() {
+		if (!bgImageData) {
+			backgroundImage = null;
+			document.getElementById("bgStatus").innerText = "No Image";
+			return;
+		}
+		backgroundImage = new Image();
+		backgroundImage.onload = function() {
+			document.getElementById("bgStatus").innerText = "Loaded";
+			redrawCanvas();
+		};
+		backgroundImage.src = bgImageData;
+	}
+
+	function autoSave() {
+		try { localStorage.setItem(STORAGE_KEY, JSON.stringify(getProjectData())); } catch(e) {}
+	}
+
+	function autoLoad() {
+		try {
+			const raw = localStorage.getItem(STORAGE_KEY);
+			if (raw) loadProjectData(JSON.parse(raw));
+		} catch(e) {}
+	}
+
+	function formatCoord(v) {
+		return Number(v).toFixed(3).replace(/0+$/, "").replace(/\.$/, ".0");
+	}
+
+	function safePythonName(name) {
+		let s = String(name || "river").replace(/[^A-Za-z0-9_]/g, "_");
+		if (!/^[A-Za-z_]/.test(s)) s = "river_" + s;
+		return s || "river";
+	}
+
+	function generateExport() {
+		const coordLines = [];
+		const buildLines = [];
+		rivers.forEach(function(r) {
+			if (r.points.length < 2) return;
+			const varName = safePythonName(r.name);
+			const coords = r.points.map(function(p) {
+				return "(" + formatCoord(p.x) + ", " + formatCoord(p.y) + ")";
+			});
+			coordLines.push("\t\t\t" + varName + " = [" + coords.join(", ") + "]");
+			if (r.type === "waterway") {
+				buildLines.push("\t\t\twaterways.build(" + varName + ", meander=" + r.meander + ", bridge_spacing=" + r.bridgeSpacing + ", bBridgesEnabled=has_bridges)");
+			} else {
+				buildLines.push("\t\t\trivers.build(" + varName + ", meander=" + r.meander + ")");
+			}
+		});
+		document.getElementById("outputArea").value = coordLines.concat([""], buildLines).join("\n");
+	}
+
+	function importFromText() {
+		const text = document.getElementById("importArea").value;
+		const blocks = [];
+		const regex = /([A-Za-z_][A-Za-z0-9_]*)\s*=\s*\[([\s\S]*?)\]/g;
+		let match;
+		while ((match = regex.exec(text)) !== null) {
+			const name = match[1];
+			const body = match[2];
+			const pointRegex = /\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*\)/g;
+			const points = [];
+			let pm;
+			while ((pm = pointRegex.exec(body)) !== null) {
+				points.push({ x: clamp(parseFloat(pm[1]), 0, 1), y: clamp(parseFloat(pm[2]), 0, 1) });
+			}
+			if (points.length > 0) {
+				let type = "river", meander = 0.2, bridgeSpacing = 4;
+				const buildRegex = new RegExp("(waterways|rivers)\\.build\\s*\\(\\s*" + name + "\\s*,([\\s\\S]*?)\\)", "m");
+				const bm = buildRegex.exec(text);
+				if (bm) {
+					type = bm[1] === "waterways" ? "waterway" : "river";
+					const mm = /meander\s*=\s*([0-9.]+)/.exec(bm[2]);
+					const sm = /bridge_spacing\s*=\s*([0-9]+)/.exec(bm[2]);
+					if (mm) meander = parseFloat(mm[1]);
+					if (sm) bridgeSpacing = parseInt(sm[1], 10);
+				}
+				blocks.push({ id: generateId(), name: name, type: type, meander: meander, bridgeSpacing: bridgeSpacing, visible: true, points: points });
+			}
+		}
+		if (blocks.length === 0) {
+			alert("No river coordinate lists found.");
+			return;
+		}
+		saveHistoryState();
+		rivers = blocks;
+		selectedRiverId = rivers[0].id;
+		selectedPointIndex = -1;
+		redrawCanvas(); updatePanels(); autoSave();
+	}
+
+	function bindEvents() {
+		document.getElementById("themeToggleBtn").onclick = function() { document.body.classList.toggle("light-mode"); redrawCanvas(); autoSave(); };
+		document.getElementById("undoBtn").onclick = performUndo;
+		document.getElementById("redoBtn").onclick = performRedo;
+		document.getElementById("addRiverBtn").onclick = function() { addRiver("river"); };
+		document.getElementById("addWaterwayBtn").onclick = function() { addRiver("waterway"); };
+		document.getElementById("deleteRiverBtn").onclick = deleteSelectedRiver;
+		document.getElementById("deletePointBtn").onclick = deleteSelectedPoint;
+		document.getElementById("insertPointBtn").onclick = insertPointAfter;
+		document.getElementById("duplicateRiverBtn").onclick = duplicateRiver;
+		document.getElementById("reverseRiverBtn").onclick = reverseRiver;
+		document.getElementById("clearPointsBtn").onclick = clearPoints;
+		document.getElementById("deselectBtn").onclick = clearSelection;
+		document.getElementById("exportBtn").onclick = generateExport;
+		document.getElementById("copyBtn").onclick = function() {
+			const out = document.getElementById("outputArea");
+			out.select();
+			document.execCommand("copy");
+		};
+		document.getElementById("doImportBtn").onclick = importFromText;
+
+		PROP_IDS.forEach(function(id) {
+			const el = document.getElementById(id);
+			el.oninput = syncProperties;
+			el.onchange = syncProperties;
+		});
+
+		document.getElementById("applyMapSizeBtn").onclick = function() {
+			mapWidth = parseInt(document.getElementById("mapWidthInput").value, 10) || 1000;
+			mapHeight = parseInt(document.getElementById("mapHeightInput").value, 10) || 700;
+			redrawCanvas(); autoSave();
+		};
+		document.getElementById("gridWInput").oninput = function(e) { gridW = parseInt(e.target.value, 10) || 1; redrawCanvas(); autoSave(); };
+		document.getElementById("gridHInput").oninput = function(e) { gridH = parseInt(e.target.value, 10) || 1; redrawCanvas(); autoSave(); };
+		document.getElementById("toggleGridBtn").onclick = function(e) {
+			showGrid = !showGrid;
+			e.target.innerText = showGrid ? "Grid On" : "Grid Off";
+			e.target.classList.toggle("active", showGrid);
+			redrawCanvas(); autoSave();
+		};
+		document.getElementById("zoomSlider").oninput = function(e) {
+			zoom = parseFloat(e.target.value);
+			document.getElementById("zoomValue").innerText = Math.round(zoom * 100) + "%";
+			redrawCanvas(); autoSave();
+		};
+		document.getElementById("fitZoomBtn").onclick = function() {
+			const container = document.getElementById("canvasContainer");
+			zoom = Math.min((container.clientWidth - 40) / mapWidth, (container.clientHeight - 40) / mapHeight);
+			zoom = clamp(zoom, 0.1, 2.5);
+			document.getElementById("zoomSlider").value = zoom;
+			document.getElementById("zoomValue").innerText = Math.round(zoom * 100) + "%";
+			redrawCanvas(); autoSave();
+		};
+
+		document.getElementById("uploadBgBtn").onclick = function() {
+			const input = document.createElement("input");
+			input.type = "file";
+			input.accept = "image/*";
+			input.onchange = function(e) {
+				const file = e.target.files[0];
+				if (!file) return;
+				const reader = new FileReader();
+				reader.onload = function(ev) {
+					bgImageData = ev.target.result;
+					loadBackgroundImage();
+					autoSave();
+				};
+				reader.readAsDataURL(file);
+			};
+			input.click();
+		};
+		document.getElementById("clearBgBtn").onclick = function() {
+			bgImageData = null;
+			backgroundImage = null;
+			document.getElementById("bgStatus").innerText = "No Image";
+			redrawCanvas(); autoSave();
+		};
+		document.getElementById("bgAlphaSlider").oninput = function(e) { bgAlpha = parseFloat(e.target.value); redrawCanvas(); autoSave(); };
+		document.getElementById("bgPosX").oninput = function(e) { bgPosX = parseFloat(e.target.value) || 0; redrawCanvas(); autoSave(); };
+		document.getElementById("bgPosY").oninput = function(e) { bgPosY = parseFloat(e.target.value) || 0; redrawCanvas(); autoSave(); };
+		document.getElementById("bgScaleInput").oninput = function(e) { bgScale = parseFloat(e.target.value) || 1; redrawCanvas(); autoSave(); };
+		document.getElementById("lineWidthInput").oninput = function(e) { lineWidth = parseFloat(e.target.value) || 1; redrawCanvas(); autoSave(); };
+		document.getElementById("pointRadiusInput").oninput = function(e) { pointRadius = parseFloat(e.target.value) || 2; redrawCanvas(); autoSave(); };
+		document.getElementById("arrowSizeInput").oninput = function(e) { arrowSize = parseFloat(e.target.value) || 0; redrawCanvas(); autoSave(); };
+
+		document.getElementById("saveProjectBtn").onclick = function() {
+			const blob = new Blob([JSON.stringify(getProjectData(), null, 2)], { type: "application/json" });
+			const a = document.createElement("a");
+			a.href = URL.createObjectURL(blob);
+			a.download = "gmf_rivers_project.json";
+			a.click();
+		};
+		document.getElementById("loadProjectBtn").onclick = function() {
+			const input = document.createElement("input");
+			input.type = "file";
+			input.accept = ".json";
+			input.onchange = function(e) {
+				const file = e.target.files[0];
+				if (!file) return;
+				const reader = new FileReader();
+				reader.onload = function(ev) { loadProjectData(JSON.parse(ev.target.result)); autoSave(); };
+				reader.readAsText(file);
+			};
+			input.click();
+		};
+
+		canvas.addEventListener("mousedown", onMouseDown);
+		window.addEventListener("mousemove", onMouseMove);
+		window.addEventListener("mouseup", onMouseUp);
+		window.addEventListener("keydown", function(e) {
+			if (e.ctrlKey && e.key.toLowerCase() === "z") { e.preventDefault(); if (e.shiftKey) performRedo(); else performUndo(); return; }
+			if (e.ctrlKey && e.key.toLowerCase() === "y") { e.preventDefault(); performRedo(); return; }
+			if (e.key === "Escape") { e.preventDefault(); clearSelection(); return; }
+			if (document.activeElement && (document.activeElement.tagName === "INPUT" || document.activeElement.tagName === "TEXTAREA")) return;
+			if (e.key === "Delete" || e.key === "Backspace") {
+				e.preventDefault();
+				if (selectedPointIndex >= 0) deleteSelectedPoint();
+				else deleteSelectedRiver();
+			}
+		});
+	}
+
+	function init() {
+		bindEvents();
+		autoLoad();
+		syncInputsFromState();
+		redrawCanvas();
+		updatePanels();
+	}
+	init();
+})();
+</script>
+</body>
+</html>
