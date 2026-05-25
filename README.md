@@ -1,8 +1,12 @@
 # GeometricMultiFractal
 
-A mapscript and editing webapp for Civilization IV: Beyond the Sword.
+An editing toolkit for for Civilization IV mapscripts.
+Contains the GeometricMultiFractal.py mapscript (to be used as a base map) and 4 webapps to support mapscript generation.
 
-Details in link.
+The mapscript uses a custom fractal plot generator based on the MultiFractal class used in several vanilla CivIV mapscripts. This generator allows one to generate maps with very specific geographies. Included are several other features: climate-based terrain / feature generator, custom river mapper, fixed starting locations, bonus additions to specific areas of the map.
+
+Details in link
+
 https://AineiasStymphalios.github.io/GeometricMultiFractal/
 
 ## Contents

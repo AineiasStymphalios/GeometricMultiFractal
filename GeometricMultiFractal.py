@@ -1,9 +1,3 @@
-
-#   FILE:    Mediterranean_Sea.py
-#   AUTHOR:  AineiasStymph (Script adapted directly from GRM7584's Earth2, which was based on Sirian's Terra script)
-#   PURPOSE: Regional Mapscript
-
-
 from CvPythonExtensions import *
 import CvUtil
 import CvMapGeneratorUtil
@@ -140,7 +134,7 @@ def getCustomMapOptionDescAt(argsList):
 		return "At least 2"
 	if index == 5: # Start Options
 		if selection == 0: return "Vanilla"
-		return "Fixed-Shuffle (Regional Placement)"
+		return "Historical"
 	return ""
 
 def getCustomMapOptionDefault(argsList):
