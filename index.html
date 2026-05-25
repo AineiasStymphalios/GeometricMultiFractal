@@ -16,6 +16,8 @@
             --accent: #45d4c7;
             --accent-light: #8ee9e2;
             --accent-alt: #9b8cff;
+			--link: #ffd166;
+			--link-hover: #ffe29b;
             --border: #314660;
             --code-bg: #07101a;
             --shadow: rgba(0, 0, 0, 0.38);
@@ -34,7 +36,7 @@
                 linear-gradient(180deg, #0b121d, #101827 60%, #0b121d);
         }
 
-        a { color: var(--accent-light); text-decoration: none; }
+        a { color: var(--link); text-decoration: none; }
         a:hover { text-decoration: underline; }
 
         .page {
@@ -259,9 +261,8 @@
         <header>
             <h1>GeometricMultiFractal Map Generation Toolkit</h1>
             <p>
-                Browser-based helper tools for drawing and configuring a Civilization IV mapscript.
+                Browser-based editing toolkit for for Civilization IV mapscripts.
             </p>
-
             <nav>
                 <a href="#webapps">Webapps</a>
                 <a href="#installation">Installation</a>
@@ -299,11 +300,16 @@
         </section>
 
         <section id="installation">
+			<h2>Description</h2>
+			<p>This toolkit contains the GeometricMultiFractal.py mapscript (used as a base map) and 4 webapps to support mapscript generation.</p>
+			<p>The mapscript uses a custom fractal plot generator based on the MultiFractal class used in several vanilla CivIV mapscripts. This generator allows one to generate maps with very specific geographies. Included are several other features: climate-based terrain / feature generator, custom river mapper, fixed starting locations, bonus additions to specific areas of the map.</p>
+		</section>
+		<section id="installation">
             <h2>Instructions</h2>
             <h3>Installation</h3>
-            <p>Download <code>Geometric_MultiFractal.py</code> from the latest release:</p>
+            <p>Download <code>GeometricMultiFractal.py</code> from the latest release:</p>
             <p><a class="button-link" href="https://github.com/AineiasStymphalios/GeometricMultiFractal/releases">Latest release</a></p>
-            <p>Place <code>Geometric_MultiFractal.py</code> in your Civilization IV <code>PublicMaps</code> folder.</p>
+            <p>Place <code>GeometricMultiFractal.py</code> in your Civilization IV <code>PublicMaps</code> folder.</p>
 
             <h4>CD version</h4>
             <pre>C:\Program Files\Firaxis Games\Civilization 4\Beyond the Sword\PublicMaps</pre>
@@ -316,7 +322,8 @@
 			<div class="section-layout">
 				<div>
 					<h2>Usage</h2>
-					<p>Open <code>index.html</code> to launch the toolkit menu.</p>
+					<p>Duplicate Geometric_MultiFractal.py and rename it.</p>
+					<p>Open <code>index.html</code> (this page) to launch the toolkit menu.</p>
 					<p>The webapps can be opened directly from the repository, through GitHub Pages, or offline from a downloaded copy of the repo.</p>
 					<p class="note">Each webapp generates a list or data block. Copy the generated output into the matching function inside <code>Geometric_MultiFractal.py</code>.</p>
 					<h3>Examples</h3>
