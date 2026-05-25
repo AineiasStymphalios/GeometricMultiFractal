@@ -98,7 +98,7 @@ def getCustomMapOptionName(argsList):
 		"Peak Reduction",
 		"River Options",
 		"Historical Resources",
-		"Starting Plot Min. Food",
+		"Minimum land food at start",
 		"Start Options"
 	]
 	if index < len(names):
@@ -421,7 +421,7 @@ def generatePlotTypes():
 			("Coral_Sea", "Rect", 0.753, 0.734, 0.091, 0.094, -24, "alpine", ScatterGrain, BalanceGrain, 85),
 			("GreatAustBight", "Ellipse", 0.356, 0.208, 0.314, 0.309, 0, "water", BalanceGrain, BalanceGrain, 90),
 			("WA Plateau", "Rect", 0.206, 0.500, 0.126, 0.200, 22, "plateau", BalanceGrain, BalanceGrain, 0),
-			("Rottnest_Is", "Rect", 0.107, 0.280, 0.060, 0.077, 0, "default", ScatterGrain, ScatterGrain, 80),
+			("Rottnest_Is", "Rect", 0.107, 0.280, 0.060, 0.077, 0, "default", ScatterGrain, ScatterGrain, 85),
 			("New_Caledonia", "Rect", 0.925, 0.641, 0.062, 0.042, 324, "default", ScatterGrain, BalanceGrain, 50),
 			("LordHowe_Norfolk_Isl", "Rect", 0.822, 0.410, 0.056, 0.283, 0, "default", ScatterGrain, BalanceGrain, 90),
 		]
@@ -847,8 +847,8 @@ def addFeatures():
 	
 	# Debug for fractal regions
 	global _DEBUG_REGIONS
-	if _DEBUG_REGIONS:
-		_add_region_signs(_DEBUG_REGIONS)
+	# if _DEBUG_REGIONS:
+		# _add_region_signs(_DEBUG_REGIONS)
 	
 	return 0
 
@@ -2431,10 +2431,25 @@ class ResourceManager:
 					if clear_feature:
 						pPlot.setFeatureType(FeatureTypes.NO_FEATURE, -1)
 
+	def _is_feature_allowed_for_bonus(self, bonus_id, feature_id):
+		if feature_id == -1:
+			return True
+
+		bonusInfo = self.gc.getBonusInfo(bonus_id)
+		iFeatureCount = self.gc.getNumFeatureInfos()
+		for i in range(iFeatureCount):
+			if i == feature_id:
+				if bonusInfo.isFeature(i):
+					return True
+				return False
+
+		return False
+
 	def add_region_specific(self, region_specs, bChangePlains=False):
 		"""
 		Place bonuses in specified regions using center-based coordinates. 
 		region["rect"] format: (cX, cY, width, height)
+		region["bonuses"] entry format: (bonus_type, count, bChangePlains)
 		"""
 		multiplier = self.size_multiplier[self.world_size]
 		iPlains = self.gc.getInfoTypeForString("TERRAIN_PLAINS")
@@ -2461,13 +2476,11 @@ class ResourceManager:
 					continue
 					
 				bonus_id = self._bonus_id(bonus_entry[0])
-				
-				# Manual check for optional 'clear_feature' argument (No Ternary)
 				if len(bonus_entry) > 2:
-					clear_feat = bonus_entry[2]
+					bBonusChangePlains = bonus_entry[2]
 				else:
-					clear_feat = False
-
+					bBonusChangePlains = False
+				
 				eligible = []
 				plot_type_fallback = []
 				
@@ -2495,16 +2508,16 @@ class ResourceManager:
 						choice = eligible.pop(self.dice.get(len(eligible), "Region Bonus"))
 					elif plot_type_fallback:
 						choice = plot_type_fallback.pop(self.dice.get(len(plot_type_fallback), "Fallback Bonus"))
-						if bChangePlains:
+						if bBonusChangePlains:
 							bChangeTerrain = True
 					
 					if choice:
 						p = self.map.plot(choice[0], choice[1])
 						if bChangeTerrain:
 							p.setTerrainType(iPlains, True, True)
-							p.setFeatureType(FeatureTypes.NO_FEATURE, -1)
-						elif clear_feat:
-							p.setFeatureType(FeatureTypes.NO_FEATURE, -1)
+							iFeature = p.getFeatureType()
+							if not self._is_feature_allowed_for_bonus(bonus_id, iFeature):
+								p.setFeatureType(FeatureTypes.NO_FEATURE, -1)
 						p.setBonusType(bonus_id)
 						placed += 1
 
@@ -2604,7 +2617,7 @@ def addCustomResources():
 				"name": "EastIndies",
 				"rect": (0.158, 0.956, 0.304, 0.1),
 				"bonuses": [
-					("BONUS_SPICE", 1, False),
+					("BONUS_SPICES", 1, False),
 				]
 			},
 			{
