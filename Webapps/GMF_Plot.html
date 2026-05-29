@@ -291,10 +291,10 @@
 					<div class="prop-field"><label>📏 WIDTH (0..1)</label><input type="number" id="normW" step="0.001" min="0.01" max="1" disabled></div>
 					<div class="prop-field"><label>📐 HEIGHT (0..1)</label><input type="number" id="normH" step="0.001" min="0.01" max="1" disabled></div>
 					<div class="prop-field"><label>🌾 GRAIN</label>
-						<select id="grainType" disabled><option>ScatterGrain</option><option>BalanceGrain</option><option>GatherGrain</option></select>
+						<select id="grainType" disabled><option>GatherGrain</option><option>ZeroGrain</option><option>ScatterGrain</option><option>BalanceGrain</option></select>
 					</div>
 					<div class="prop-field"><label>⛰️ HILLS GRAIN</label>
-						<select id="hillsGrain" disabled><option>ScatterGrain</option><option>BalanceGrain</option><option>GatherGrain</option></select>
+						<select id="hillsGrain" disabled><option>ScatterGrain</option><option>ZeroGrain</option><option>BalanceGrain</option><option>GatherGrain</option></select>
 					</div>
 					<div class="prop-field"><label>💧 WATER%</label><input type="number" id="waterPercent" step="1" min="0" max="100" disabled></div>
 				</div>
@@ -854,19 +854,19 @@
 			
 			document.getElementById('addRectBtn').onclick = () => { 
 				saveHistoryState(); const id = generateId();
-				regions.push({id: id, name:'Rect'+(regions.length+1), type:'rect', normX:0.5, normY:0.5, normW:0.2, normH:0.2, angle:0, altitude:'default', grain:'BalanceGrain', hillsGrain:'BalanceGrain', waterPercent:0, visible:true}); 
+				regions.push({id: id, name:'Rect'+(regions.length+1), type:'rect', normX:0.5, normY:0.5, normW:0.2, normH:0.2, angle:0, altitude:'default', grain:'GatherGrain', hillsGrain:'ScatterGrain', waterPercent:0, visible:true}); 
 				selectedIds = [id]; // Set cursor to new item
 				redrawCanvas(); updatePropertiesPanel(); updateRegionList(); autoSave(); 
 			};
 			document.getElementById('addEllipseBtn').onclick = () => { 
 				saveHistoryState(); const id = generateId();
-				regions.push({id: id, name:'Ellipse'+(regions.length+1), type:'ellipse', normX:0.5, normY:0.5, normW:0.2, normH:0.2, angle:0, altitude:'default', grain:'BalanceGrain', hillsGrain:'BalanceGrain', waterPercent:0, visible:true}); 
+				regions.push({id: id, name:'Ellipse'+(regions.length+1), type:'ellipse', normX:0.5, normY:0.5, normW:0.2, normH:0.2, angle:0, altitude:'default', grain:'GatherGrain', hillsGrain:'ScatterGrain', waterPercent:0, visible:true}); 
 				selectedIds = [id]; // Set cursor to new item
 				redrawCanvas(); updatePropertiesPanel(); updateRegionList(); autoSave(); 
 			};
 			document.getElementById('addIsotriBtn').onclick = () => { 
 				saveHistoryState(); const id = generateId();
-				regions.push({id: id, name:'Isotri'+(regions.length+1), type:'isotri', normX:0.5, normY:0.5, normW:0.2, normH:0.2, angle:0, altitude:'default', grain:'BalanceGrain', hillsGrain:'BalanceGrain', waterPercent:0, visible:true}); 
+				regions.push({id: id, name:'Isotri'+(regions.length+1), type:'isotri', normX:0.5, normY:0.5, normW:0.2, normH:0.2, angle:0, altitude:'default', grain:'GatherGrain', hillsGrain:'ScatterGrain', waterPercent:0, visible:true}); 
 				selectedIds = [id]; // Set cursor to new item
 				redrawCanvas(); updatePropertiesPanel(); updateRegionList(); autoSave(); 
 			};
@@ -964,8 +964,8 @@
 			document.getElementById('alphaSlider').oninput = (e) => { globalAlpha = parseFloat(e.target.value); redrawCanvas(); autoSave(); };
 			document.getElementById('textSizeNumber').oninput = (e) => { textSize = parseFloat(e.target.value) || 12; redrawCanvas(); autoSave(); };
 			document.getElementById('strokeNumber').oninput = (e) => { strokeWidth = parseFloat(e.target.value) || 1; redrawCanvas(); autoSave(); };
-			document.getElementById('addRectBtn').onclick = () => { regions.push({id:generateId(), name:'Rect'+(regions.length+1), type:'rect', normX:0.5, normY:0.5, normW:0.2, normH:0.2, angle:0, altitude:'default', grain:'BalanceGrain', hillsGrain:'BalanceGrain', waterPercent:0, visible:true}); redrawCanvas(); updateRegionList(); autoSave(); };
-			document.getElementById('addEllipseBtn').onclick = () => { regions.push({id:generateId(), name:'Ellipse'+(regions.length+1), type:'ellipse', normX:0.5, normY:0.5, normW:0.2, normH:0.2, angle:0, altitude:'default', grain:'BalanceGrain', hillsGrain:'BalanceGrain', waterPercent:0, visible:true}); redrawCanvas(); updateRegionList(); autoSave(); };
+			document.getElementById('addRectBtn').onclick = () => { regions.push({id:generateId(), name:'Rect'+(regions.length+1), type:'rect', normX:0.5, normY:0.5, normW:0.2, normH:0.2, angle:0, altitude:'default', grain:'GatherGrain', hillsGrain:'ScatterGrain', waterPercent:0, visible:true}); redrawCanvas(); updateRegionList(); autoSave(); };
+			document.getElementById('addEllipseBtn').onclick = () => { regions.push({id:generateId(), name:'Ellipse'+(regions.length+1), type:'ellipse', normX:0.5, normY:0.5, normW:0.2, normH:0.2, angle:0, altitude:'default', grain:'GatherGrain', hillsGrain:'ScatterGrain', waterPercent:0, visible:true}); redrawCanvas(); updateRegionList(); autoSave(); };
 			document.getElementById('deleteBtn').onclick = () => { if (selectedIds.length > 0) { regions = regions.filter(r => !selectedIds.includes(r.id)); selectedIds = []; redrawCanvas(); updatePropertiesPanel(); updateRegionList(); autoSave(); } };
 			// In bindEvents()
 			document.getElementById('generateBtn').onclick = () => {
@@ -991,8 +991,8 @@
 					normH: 0.2, 
 					angle: 0, 
 					altitude: 'default', 
-					grain: 'BalanceGrain', 
-					hillsGrain: 'BalanceGrain', 
+					grain: 'GatherGrain', 
+					hillsGrain: 'ScatterGrain', 
 					waterPercent: 0, 
 					visible: true
 				}); 
@@ -1017,7 +1017,7 @@
 					let c = text.trim().replace(/^regions\s*=\s*/, '').replace(/\(/g, '[').replace(/\)/g, ']');
 					
 					// These variables must exist for the 'eval' to work
-					const ScatterGrain="ScatterGrain", BalanceGrain="BalanceGrain", GatherGrain="GatherGrain";
+					const ZeroGrain="ZeroGrain", ScatterGrain="ScatterGrain", BalanceGrain="BalanceGrain", GatherGrain="GatherGrain";
 					
 					if(!c.startsWith('[')) c = '[' + c + ']';
 					
