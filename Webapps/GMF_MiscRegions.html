@@ -382,14 +382,38 @@
 			r.x = clamp(dragRegion.x + dx / mapWidth, 0, 1);
 			r.y = clamp(dragRegion.y - dy / mapHeight, 0, 1);
 		} else {
-			let w = dragRegion.w * mapWidth, h = dragRegion.h * mapHeight;
-			if (activeHandle.indexOf("e") >= 0) w += dx * 2;
-			if (activeHandle.indexOf("w") >= 0) w -= dx * 2;
-			if (activeHandle.indexOf("s") >= 0) h += dy * 2;
-			if (activeHandle.indexOf("n") >= 0) h -= dy * 2;
+			let startW = dragRegion.w * mapWidth, startH = dragRegion.h * mapHeight;
+			let w = startW, h = startH, cx = dragRegion.x * mapWidth, cy = (1 - dragRegion.y) * mapHeight;
+			if (e.ctrlKey) {
+				if (activeHandle.indexOf("e") >= 0) w += dx * 2;
+				if (activeHandle.indexOf("w") >= 0) w -= dx * 2;
+				if (activeHandle.indexOf("s") >= 0) h += dy * 2;
+				if (activeHandle.indexOf("n") >= 0) h -= dy * 2;
+			} else {
+				let left = cx - startW / 2, right = cx + startW / 2, top = cy - startH / 2, bottom = cy + startH / 2;
+				if (activeHandle.indexOf("e") >= 0) right += dx;
+				if (activeHandle.indexOf("w") >= 0) left += dx;
+				if (activeHandle.indexOf("s") >= 0) bottom += dy;
+				if (activeHandle.indexOf("n") >= 0) top += dy;
+				w = right - left;
+				h = bottom - top;
+				if (w < 1) {
+					if (activeHandle.indexOf("w") >= 0) left = right - 1;
+					else right = left + 1;
+					w = 1;
+				}
+				if (h < 1) {
+					if (activeHandle.indexOf("n") >= 0) top = bottom - 1;
+					else bottom = top + 1;
+					h = 1;
+				}
+				cx = (left + right) / 2;
+				cy = (top + bottom) / 2;
+			}
 			r.w = clamp(w / mapWidth, 0.001, 1);
 			r.h = clamp(h / mapHeight, 0.001, 1);
-			r.x = dragRegion.x; r.y = dragRegion.y;
+			r.x = clamp(cx / mapWidth, 0, 1);
+			r.y = clamp(1 - cy / mapHeight, 0, 1);
 		}
 		redraw(); updatePanels();
 	}

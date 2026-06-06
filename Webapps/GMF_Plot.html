@@ -786,16 +786,38 @@
 				if (dragMode.startsWith('resize')) {
 					const rad = reg.angle * Math.PI / 180;
 					const ldx = dx * Math.cos(rad) - dy * Math.sin(rad), ldy = dx * Math.sin(rad) + dy * Math.cos(rad);
-					let nw = dragStartRegion.w, nh = dragStartRegion.h;
-					if (activeHandle.includes('e')) nw += ldx * 2;
-					if (activeHandle.includes('w')) nw -= ldx * 2;
-					if (activeHandle.includes('s')) nh += ldy * 2;
-					if (activeHandle.includes('n')) nh -= ldy * 2;
+					let nw = dragStartRegion.w, nh = dragStartRegion.h, centerLx = 0, centerLy = 0;
+					if (e.ctrlKey) {
+						if (activeHandle.includes('e')) nw += ldx * 2;
+						if (activeHandle.includes('w')) nw -= ldx * 2;
+						if (activeHandle.includes('s')) nh += ldy * 2;
+						if (activeHandle.includes('n')) nh -= ldy * 2;
+					} else {
+						let left = -dragStartRegion.w / 2, right = dragStartRegion.w / 2, top = -dragStartRegion.h / 2, bottom = dragStartRegion.h / 2;
+						if (activeHandle.includes('e')) right += ldx;
+						if (activeHandle.includes('w')) left += ldx;
+						if (activeHandle.includes('s')) bottom += ldy;
+						if (activeHandle.includes('n')) top += ldy;
+						nw = right - left;
+						nh = bottom - top;
+						if (nw < 10) {
+							if (activeHandle.includes('w')) left = right - 10;
+							else right = left + 10;
+							nw = 10;
+						}
+						if (nh < 10) {
+							if (activeHandle.includes('n')) top = bottom - 10;
+							else bottom = top + 10;
+							nh = 10;
+						}
+						centerLx = (left + right) / 2;
+						centerLy = (top + bottom) / 2;
+					}
 					if (nw < 10) nw = 10;
 					if (nh < 10) nh = 10;
 					reg.normW = nw/mapWidth; reg.normH = nh/mapHeight;
-					reg.normX = (dragStartRegion.x + dragStartRegion.w/2)/mapWidth;
-					reg.normY = (dragStartRegion.y + dragStartRegion.h/2)/mapHeight;
+					reg.normX = (dragStartRegion.x + dragStartRegion.w/2 + centerLx * Math.cos(rad) + centerLy * Math.sin(rad))/mapWidth;
+					reg.normY = (dragStartRegion.y + dragStartRegion.h/2 - centerLx * Math.sin(rad) + centerLy * Math.cos(rad))/mapHeight;
 				}
 				else if (dragMode === 'rotate') {
 					const abs = normToAbs(reg), startAng = Math.atan2(dragStartMouse.y - abs.cy, dragStartMouse.x - abs.cx), curAng = Math.atan2(mouse.y - abs.cy, mouse.x - abs.cx);
