@@ -297,6 +297,9 @@
 						<select id="hillsGrain" disabled><option>ScatterGrain</option><option>ZeroGrain</option><option>BalanceGrain</option><option>GatherGrain</option></select>
 					</div>
 					<div class="prop-field"><label>💧 WATER%</label><input type="number" id="waterPercent" step="1" min="0" max="100" disabled></div>
+					<div class="prop-field"><label>REDUCE EDGES</label>
+						<select id="bReduceEdges" disabled><option>False</option><option>True</option></select>
+					</div>
 				</div>
 			</div>
 			<div class="region-card">
@@ -366,7 +369,7 @@
 
 		let isDragging = false, dragMode = null, activeHandle = null;
 		let dragStartMouse = { x:0, y:0 }, dragStartRegion = null;
-		const PROPERTY_FIELD_IDS = ['rectName','rectAltitude','regionType','angleDeg','normCX','normCY','normW','normH','grainType','hillsGrain','waterPercent'];
+		const PROPERTY_FIELD_IDS = ['rectName','rectAltitude','regionType','angleDeg','normCX','normCY','normW','normH','grainType','hillsGrain','waterPercent','bReduceEdges'];
 
 		const canvas = document.getElementById('mapCanvas');
 		const ctx = canvas.getContext('2d');
@@ -605,7 +608,7 @@
 		}
 
 		function updatePropertiesPanel() {
-			const fields = ['rectName', 'rectAltitude', 'regionType', 'angleDeg', 'normCX', 'normCY', 'normW', 'normH', 'grainType', 'hillsGrain', 'waterPercent'];
+			const fields = ['rectName', 'rectAltitude', 'regionType', 'angleDeg', 'normCX', 'normCY', 'normW', 'normH', 'grainType', 'hillsGrain', 'waterPercent', 'bReduceEdges'];
 			if (selectedIds.length === 0) {
 				fields.forEach(f => document.getElementById(f).disabled = true);
 				document.getElementById('selectionBadge').innerText = "⭕ none"; return;
@@ -626,6 +629,7 @@
 			document.getElementById('grainType').value = r.grain;
 			document.getElementById('hillsGrain').value = r.hillsGrain;
 			document.getElementById('waterPercent').value = r.waterPercent;
+			document.getElementById('bReduceEdges').value = r.bReduceEdges ? 'True' : 'False';
 		}
 
 		function syncProperties() {
@@ -647,6 +651,7 @@
 				r.grain = document.getElementById('grainType').value;
 				r.hillsGrain = document.getElementById('hillsGrain').value;
 				r.waterPercent = parseInt(document.getElementById('waterPercent').value) || 0;
+				r.bReduceEdges = document.getElementById('bReduceEdges').value === 'True';
 			});
 			if (beforeState !== JSON.stringify(regions)) {
 				undoStack.push(JSON.parse(beforeState));
@@ -681,6 +686,7 @@
 			bgImageData = data.bgImageData || null;
 			textSize = data.textSize || 12; globalAlpha = data.globalAlpha || 0.55; strokeWidth = data.strokeWidth || 2.2;
 			regions = data.regions || [];
+			regions.forEach(r => { r.bReduceEdges = r.bReduceEdges === true || r.bReduceEdges === 'True'; });
 			selectedIds = [];
 			
 			if (data.theme === 'light') document.body.classList.add('light-mode');
@@ -876,19 +882,19 @@
 			
 			document.getElementById('addRectBtn').onclick = () => { 
 				saveHistoryState(); const id = generateId();
-				regions.push({id: id, name:'Rect'+(regions.length+1), type:'rect', normX:0.5, normY:0.5, normW:0.2, normH:0.2, angle:0, altitude:'default', grain:'GatherGrain', hillsGrain:'ScatterGrain', waterPercent:0, visible:true}); 
+				regions.push({id: id, name:'Rect'+(regions.length+1), type:'rect', normX:0.5, normY:0.5, normW:0.2, normH:0.2, angle:0, altitude:'default', grain:'GatherGrain', hillsGrain:'ScatterGrain', waterPercent:0, bReduceEdges:false, visible:true}); 
 				selectedIds = [id]; // Set cursor to new item
 				redrawCanvas(); updatePropertiesPanel(); updateRegionList(); autoSave(); 
 			};
 			document.getElementById('addEllipseBtn').onclick = () => { 
 				saveHistoryState(); const id = generateId();
-				regions.push({id: id, name:'Ellipse'+(regions.length+1), type:'ellipse', normX:0.5, normY:0.5, normW:0.2, normH:0.2, angle:0, altitude:'default', grain:'GatherGrain', hillsGrain:'ScatterGrain', waterPercent:0, visible:true}); 
+				regions.push({id: id, name:'Ellipse'+(regions.length+1), type:'ellipse', normX:0.5, normY:0.5, normW:0.2, normH:0.2, angle:0, altitude:'default', grain:'GatherGrain', hillsGrain:'ScatterGrain', waterPercent:0, bReduceEdges:false, visible:true}); 
 				selectedIds = [id]; // Set cursor to new item
 				redrawCanvas(); updatePropertiesPanel(); updateRegionList(); autoSave(); 
 			};
 			document.getElementById('addIsotriBtn').onclick = () => { 
 				saveHistoryState(); const id = generateId();
-				regions.push({id: id, name:'Isotri'+(regions.length+1), type:'isotri', normX:0.5, normY:0.5, normW:0.2, normH:0.2, angle:0, altitude:'default', grain:'GatherGrain', hillsGrain:'ScatterGrain', waterPercent:0, visible:true}); 
+				regions.push({id: id, name:'Isotri'+(regions.length+1), type:'isotri', normX:0.5, normY:0.5, normW:0.2, normH:0.2, angle:0, altitude:'default', grain:'GatherGrain', hillsGrain:'ScatterGrain', waterPercent:0, bReduceEdges:false, visible:true}); 
 				selectedIds = [id]; // Set cursor to new item
 				redrawCanvas(); updatePropertiesPanel(); updateRegionList(); autoSave(); 
 			};
@@ -986,8 +992,8 @@
 			document.getElementById('alphaSlider').oninput = (e) => { globalAlpha = parseFloat(e.target.value); redrawCanvas(); autoSave(); };
 			document.getElementById('textSizeNumber').oninput = (e) => { textSize = parseFloat(e.target.value) || 12; redrawCanvas(); autoSave(); };
 			document.getElementById('strokeNumber').oninput = (e) => { strokeWidth = parseFloat(e.target.value) || 1; redrawCanvas(); autoSave(); };
-			document.getElementById('addRectBtn').onclick = () => { regions.push({id:generateId(), name:'Rect'+(regions.length+1), type:'rect', normX:0.5, normY:0.5, normW:0.2, normH:0.2, angle:0, altitude:'default', grain:'GatherGrain', hillsGrain:'ScatterGrain', waterPercent:0, visible:true}); redrawCanvas(); updateRegionList(); autoSave(); };
-			document.getElementById('addEllipseBtn').onclick = () => { regions.push({id:generateId(), name:'Ellipse'+(regions.length+1), type:'ellipse', normX:0.5, normY:0.5, normW:0.2, normH:0.2, angle:0, altitude:'default', grain:'GatherGrain', hillsGrain:'ScatterGrain', waterPercent:0, visible:true}); redrawCanvas(); updateRegionList(); autoSave(); };
+			document.getElementById('addRectBtn').onclick = () => { regions.push({id:generateId(), name:'Rect'+(regions.length+1), type:'rect', normX:0.5, normY:0.5, normW:0.2, normH:0.2, angle:0, altitude:'default', grain:'GatherGrain', hillsGrain:'ScatterGrain', waterPercent:0, bReduceEdges:false, visible:true}); redrawCanvas(); updateRegionList(); autoSave(); };
+			document.getElementById('addEllipseBtn').onclick = () => { regions.push({id:generateId(), name:'Ellipse'+(regions.length+1), type:'ellipse', normX:0.5, normY:0.5, normW:0.2, normH:0.2, angle:0, altitude:'default', grain:'GatherGrain', hillsGrain:'ScatterGrain', waterPercent:0, bReduceEdges:false, visible:true}); redrawCanvas(); updateRegionList(); autoSave(); };
 			document.getElementById('deleteBtn').onclick = () => { if (selectedIds.length > 0) { regions = regions.filter(r => !selectedIds.includes(r.id)); selectedIds = []; redrawCanvas(); updatePropertiesPanel(); updateRegionList(); autoSave(); } };
 			// In bindEvents()
 			document.getElementById('generateBtn').onclick = () => {
@@ -997,7 +1003,7 @@
 					if (r.type === 'ellipse') typeName = "Ellipse";
 					if (r.type === 'isotri')  typeName = "Isotri";
 
-					return `\t("${r.name}", "${typeName}", ${r.normX.toFixed(3)}, ${(1-r.normY).toFixed(3)}, ${r.normW.toFixed(3)}, ${r.normH.toFixed(3)}, ${Math.round(r.angle)}, "${r.altitude}", ${r.grain}, ${r.hillsGrain}, ${r.waterPercent}),`;
+					return `\t("${r.name}", "${typeName}", ${r.normX.toFixed(3)}, ${(1-r.normY).toFixed(3)}, ${r.normW.toFixed(3)}, ${r.normH.toFixed(3)}, ${Math.round(r.angle)}, "${r.altitude}", ${r.grain}, ${r.hillsGrain}, ${r.waterPercent}, ${r.bReduceEdges ? 'True' : 'False'}),`;
 				});
 				document.getElementById('outputArea').value = "regions = [\n" + lines.join('\n') + "\n]";
 			};
@@ -1016,6 +1022,7 @@
 					grain: 'GatherGrain', 
 					hillsGrain: 'ScatterGrain', 
 					waterPercent: 0, 
+					bReduceEdges: false, 
 					visible: true
 				}); 
 				redrawCanvas(); 
@@ -1039,7 +1046,7 @@
 					let c = text.trim().replace(/^regions\s*=\s*/, '').replace(/\(/g, '[').replace(/\)/g, ']');
 					
 					// These variables must exist for the 'eval' to work
-					const ZeroGrain="ZeroGrain", ScatterGrain="ScatterGrain", BalanceGrain="BalanceGrain", GatherGrain="GatherGrain";
+					const ZeroGrain="ZeroGrain", ScatterGrain="ScatterGrain", BalanceGrain="BalanceGrain", GatherGrain="GatherGrain", True=true, False=false;
 					
 					if(!c.startsWith('[')) c = '[' + c + ']';
 					
@@ -1068,6 +1075,7 @@
 							grain: item[8], 
 							hillsGrain: item[9], 
 							waterPercent: item[10], 
+							bReduceEdges: item.length > 11 ? (item[11] === true || item[11] === 'True') : false, 
 							visible: true 
 						};
 					});

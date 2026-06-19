@@ -387,7 +387,8 @@ def generatePlotTypes():
 		WorldSizeTypes.WORLDSIZE_HUGE:      (5,2,1)
 	}
 	(ScatterGrain, BalanceGrain, GatherGrain) = sizevalues[sizekey]
-
+	ZeroGrain = 0
+	
 	regions = []
 	if accuracy == 0: # High ACCURACY
 		# Name, Type, CX, CY, W, H, Angle, Terrain, Grain, Hills, Water%
@@ -2176,7 +2177,7 @@ class ResourceManager:
 
 		return True
 	
-	def place_food_bonus_in_BFC(self, bonus_list, count=1, check_existence=False):
+	def place_bonus_in_BFC(self, bonus_list, count=1, check_existence=False):
 		"""
 		Tiered placement logic for LAND starting resources.
 		1. Natural Fit: Shuffles bonuses and finds a tile that matches terrain requirements.
@@ -2644,4 +2645,4 @@ def addCustomResources():
 
 	# 4. Food resources
 	food_list = ["BONUS_WHEAT", "BONUS_RICE", "BONUS_CORN", "BONUS_COW", "BONUS_SHEEP", "BONUS_PIG", "BONUS_DEER"]
-	rm.place_food_bonus_in_BFC(food_list, count=food_count, check_existence=True)
+	rm.place_bonus_in_BFC(food_list, count=food_count, check_existence=True)
