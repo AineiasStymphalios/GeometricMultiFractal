@@ -238,6 +238,10 @@
 						<input type="number" id="bgScaleInput" value="1.00" step="0.05" min="0.1" style="width:100%">
 					</div>
 					<div class="control-group">
+						<label>ANGLE (degrees)</label>
+						<input type="number" id="bgAngleInput" value="0" step="1" style="width:100%">
+					</div>
+					<div class="control-group">
 						<label>🌫️ OPACITY</label>
 						<input type="range" id="bgAlphaSlider" min="0" max="1" step="0.01" value="1.0" style="Height:10px">
 					</div>
@@ -363,12 +367,13 @@
 		
 		let backgroundImage = null;
 		let bgImageData = null; 
-		let bgAlpha = 1.0, bgPosX = 0, bgPosY = 0, bgScale = 1.0;
+		let bgAlpha = 1.0, bgPosX = 0, bgPosY = 0, bgScale = 1.0, bgAngle = 0;
 		
 		let textSize = 12, globalAlpha = 0.55, strokeWidth = 2.2;
 
 		let isDragging = false, dragMode = null, activeHandle = null;
 		let dragStartMouse = { x:0, y:0 }, dragStartRegion = null;
+		let groupRotationPivot = null, groupStartMouseAngle = 0;
 		const PROPERTY_FIELD_IDS = ['rectName','rectAltitude','regionType','angleDeg','normCX','normCY','normW','normH','grainType','hillsGrain','waterPercent','bReduceEdges'];
 
 		const canvas = document.getElementById('mapCanvas');
@@ -431,6 +436,33 @@
 			return null;
 		}
 
+		function getSelectionBounds() {
+			if (selectedIds.length < 2) return null;
+			const selectedRegions = selectedIds.map(id => regions.find(r => r.id === id)).filter(Boolean);
+			if (selectedRegions.length < 2) return null;
+			let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+			selectedRegions.forEach(reg => {
+				const abs = normToAbs(reg);
+				const rad = -reg.angle * Math.PI / 180;
+				const cos = Math.cos(rad), sin = Math.sin(rad);
+				[[-abs.w/2, -abs.h/2], [abs.w/2, -abs.h/2], [-abs.w/2, abs.h/2], [abs.w/2, abs.h/2]].forEach(point => {
+					const x = abs.cx + point[0] * cos - point[1] * sin;
+					const y = abs.cy + point[0] * sin + point[1] * cos;
+					minX = Math.min(minX, x); minY = Math.min(minY, y);
+					maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
+				});
+			});
+			if (!isFinite(minX)) return null;
+			return { x:minX, y:minY, w:maxX-minX, h:maxY-minY, cx:(minX+maxX)/2, cy:(minY+maxY)/2 };
+		}
+
+		function hitTestGroupRotationHandle(bounds, mx, my) {
+			if (!bounds) return false;
+			const hx = bounds.cx, hy = bounds.y - 25/zoom;
+			const dx = mx - hx, dy = my - hy;
+			return Math.sqrt(dx*dx + dy*dy) <= Math.max(8, 12/zoom);
+		}
+
 		function generateId() { return Date.now() + '-' + Math.random().toString(36).substr(2, 5); }
 
 		function redrawCanvas() {
@@ -441,7 +473,9 @@
 			if (backgroundImage && backgroundImage.complete) {
 				ctx.save(); ctx.globalAlpha = bgAlpha;
 				const dw = backgroundImage.width * bgScale, dh = backgroundImage.height * bgScale;
-				ctx.drawImage(backgroundImage, (mapWidth/2 + bgPosX) - dw/2, (mapHeight/2 + bgPosY) - dh/2, dw, dh);
+				ctx.translate(mapWidth/2 + bgPosX, mapHeight/2 + bgPosY);
+				ctx.rotate(bgAngle * Math.PI / 180);
+				ctx.drawImage(backgroundImage, -dw/2, -dh/2, dw, dh);
 				ctx.restore();
 			} else {
 				ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg-canvas-inner').trim() || "#d9e2e8";
@@ -531,6 +565,20 @@
 				}
 				ctx.restore();
 			});
+
+			if (selectedIds.length > 1) {
+				const bounds = getSelectionBounds();
+				if (bounds) {
+					ctx.save();
+					ctx.strokeStyle = "#ffaa33"; ctx.fillStyle = "#f0982e";
+					ctx.setLineDash([5/zoom, 5/zoom]); ctx.lineWidth = 2/zoom;
+					ctx.strokeRect(bounds.x, bounds.y, bounds.w, bounds.h);
+					ctx.beginPath(); ctx.moveTo(bounds.cx, bounds.y); ctx.lineTo(bounds.cx, bounds.y - 25/zoom); ctx.stroke();
+					ctx.setLineDash([]);
+					ctx.beginPath(); ctx.arc(bounds.cx, bounds.y - 25/zoom, 10/zoom, 0, Math.PI*2); ctx.fill();
+					ctx.restore();
+				}
+			}
 
 			if (marqueeRect) {
 				ctx.strokeStyle = "rgba(0, 120, 215, 0.8)";
@@ -671,7 +719,7 @@
 		function getProjectData() {
 			return {
 				mapWidth, mapHeight, zoom, gridW, gridH, showGrid,
-				bgAlpha, bgPosX, bgPosY, bgScale, bgImageData,
+				bgAlpha, bgPosX, bgPosY, bgScale, bgAngle, bgImageData,
 				textSize, globalAlpha, strokeWidth, regions,
 				theme: document.body.classList.contains('light-mode') ? 'light' : 'dark'
 			};
@@ -682,7 +730,7 @@
 			zoom = data.zoom || 1.0;
 			gridW = data.gridW || 80; gridH = data.gridH || 40;
 			showGrid = !!data.showGrid;
-			bgAlpha = data.bgAlpha || 1.0; bgPosX = data.bgPosX || 0; bgPosY = data.bgPosY || 0; bgScale = data.bgScale || 1.0;
+			bgAlpha = data.bgAlpha || 1.0; bgPosX = data.bgPosX || 0; bgPosY = data.bgPosY || 0; bgScale = data.bgScale || 1.0; bgAngle = parseFloat(data.bgAngle) || 0;
 			bgImageData = data.bgImageData || null;
 			textSize = data.textSize || 12; globalAlpha = data.globalAlpha || 0.55; strokeWidth = data.strokeWidth || 2.2;
 			regions = data.regions || [];
@@ -705,6 +753,7 @@
 			document.getElementById('gridWInput').value = gridW;
 			document.getElementById('gridHInput').value = gridH;
 			document.getElementById('bgScaleInput').value = bgScale;
+			document.getElementById('bgAngleInput').value = bgAngle;
 			document.getElementById('toggleGridBtn').innerText = showGrid ? "GRID ON" : "GRID OFF";
 			document.getElementById('toggleGridBtn').classList.toggle('active', showGrid);
 			
@@ -739,6 +788,21 @@
 		function onMouseDown(e) {
 			syncFocusedProperty();
 			const m = getCanvasMouse(e);
+			const groupBounds = getSelectionBounds();
+			if (hitTestGroupRotationHandle(groupBounds, m.x, m.y)) {
+				isDragging = true; dragStartMouse = m; dragMode = 'groupRotate'; activeHandle = 'groupRot';
+				groupRotationPivot = { x:groupBounds.cx, y:groupBounds.cy };
+				groupStartMouseAngle = Math.atan2(m.y - groupRotationPivot.y, m.x - groupRotationPivot.x);
+				dragSnapshot = selectedIds.map(id => {
+					const r = regions.find(x => x.id === id);
+					if (!r) return null;
+					const abs = normToAbs(r);
+					return { id:r.id, normX:r.normX, normY:r.normY, centerX:abs.cx, centerY:abs.cy, angle:r.angle };
+				}).filter(Boolean);
+				preDragState = JSON.stringify(regions);
+				redrawCanvas(); updatePropertiesPanel(); updateRegionList();
+				return;
+			}
 			let hit = null;
 			if (selectedIds.length === 1) {
 				const reg = regions.find(r => r.id === selectedIds[0]);
@@ -786,7 +850,21 @@
 					const reg = regions.find(r => r.id === id), snap = dragSnapshot.find(s => s.id === id);
 					if(reg && snap) { reg.normX = snap.normX + (dx / mapWidth); reg.normY = snap.normY + (dy / mapHeight); }
 				});
-			} 
+			}
+			else if (dragMode === 'groupRotate' && groupRotationPivot) {
+				const currentMouseAngle = Math.atan2(mouse.y - groupRotationPivot.y, mouse.x - groupRotationPivot.x);
+				const delta = currentMouseAngle - groupStartMouseAngle;
+				const cos = Math.cos(delta), sin = Math.sin(delta);
+				dragSnapshot.forEach(snap => {
+					const reg = regions.find(r => r.id === snap.id);
+					if (!reg) return;
+					const ox = snap.centerX - groupRotationPivot.x, oy = snap.centerY - groupRotationPivot.y;
+					reg.normX = (groupRotationPivot.x + ox * cos - oy * sin) / mapWidth;
+					reg.normY = (groupRotationPivot.y + ox * sin + oy * cos) / mapHeight;
+					reg.angle = (snap.angle - delta * 180 / Math.PI) % 360;
+					if (reg.angle < 0) reg.angle += 360;
+				});
+			}
 			else if (selectedIds.length === 1) {
 				const reg = regions.find(r => r.id === selectedIds[0]);
 				if (dragMode.startsWith('resize')) {
@@ -854,7 +932,7 @@
 					if (abs.cx >= xmin && abs.cx <= xmax && abs.cy >= ymin && abs.cy <= ymax) if (!selectedIds.includes(r.id)) selectedIds.push(r.id);
 				});
 			}
-			isDragging = false; marqueeRect = null; dragSnapshot = []; redrawCanvas(); updatePropertiesPanel(); updateRegionList(); autoSave();
+			isDragging = false; marqueeRect = null; dragSnapshot = []; groupRotationPivot = null; groupStartMouseAngle = 0; redrawCanvas(); updatePropertiesPanel(); updateRegionList(); autoSave();
 		}
 
 		function pointInRegion(reg, mx, my){
@@ -989,6 +1067,7 @@
 			document.getElementById('bgPosX').oninput = e => { bgPosX = parseFloat(e.target.value)||0; redrawCanvas(); autoSave(); };
 			document.getElementById('bgPosY').oninput = e => { bgPosY = parseFloat(e.target.value)||0; redrawCanvas(); autoSave(); };
 			document.getElementById('bgScaleInput').oninput = e => { bgScale = parseFloat(e.target.value)||1; redrawCanvas(); autoSave(); };
+			document.getElementById('bgAngleInput').oninput = e => { bgAngle = parseFloat(e.target.value)||0; redrawCanvas(); autoSave(); };
 			document.getElementById('alphaSlider').oninput = (e) => { globalAlpha = parseFloat(e.target.value); redrawCanvas(); autoSave(); };
 			document.getElementById('textSizeNumber').oninput = (e) => { textSize = parseFloat(e.target.value) || 12; redrawCanvas(); autoSave(); };
 			document.getElementById('strokeNumber').oninput = (e) => { strokeWidth = parseFloat(e.target.value) || 1; redrawCanvas(); autoSave(); };

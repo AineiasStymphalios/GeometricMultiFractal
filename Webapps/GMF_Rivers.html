@@ -279,6 +279,10 @@
 						<input type="number" id="bgScaleInput" value="1.00" step="0.05" min="0.1" style="width:100%">
 					</div>
 					<div class="group">
+						<label>Angle (degrees)</label>
+						<input type="number" id="bgAngleInput" value="0" step="1" style="width:100%">
+					</div>
+					<div class="group">
 						<label>🌫️ Opacity</label>
 						<input type="range" id="bgAlphaSlider" min="0" max="1" step="0.01" value="1.0">
 					</div>
@@ -376,7 +380,7 @@ rivers.build(yellow, meander=0.2)"></textarea>
 	let rivers = [];
 	let selectedRiverId = null, selectedPointIndex = -1;
 	let backgroundImage = null, bgImageData = null;
-	let bgAlpha = 1.0, bgPosX = 0, bgPosY = 0, bgScale = 1.0;
+	let bgAlpha = 1.0, bgPosX = 0, bgPosY = 0, bgScale = 1.0, bgAngle = 0;
 	let lineWidth = 4, pointRadius = 6, arrowSize = 11;
 	let isDraggingPoint = false, dragStartMouse = null, dragStartPoint = null;
 	let undoStack = [], redoStack = [];
@@ -509,7 +513,9 @@ rivers.build(yellow, meander=0.2)"></textarea>
 			ctx.save();
 			ctx.globalAlpha = bgAlpha;
 			const dw = backgroundImage.width * bgScale, dh = backgroundImage.height * bgScale;
-			ctx.drawImage(backgroundImage, (mapWidth / 2 + bgPosX) - dw / 2, (mapHeight / 2 + bgPosY) - dh / 2, dw, dh);
+			ctx.translate(mapWidth / 2 + bgPosX, mapHeight / 2 + bgPosY);
+			ctx.rotate(bgAngle * Math.PI / 180);
+			ctx.drawImage(backgroundImage, -dw / 2, -dh / 2, dw, dh);
 			ctx.restore();
 		} else {
 			ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--bg-canvas-inner");
@@ -841,7 +847,7 @@ rivers.build(yellow, meander=0.2)"></textarea>
 	function getProjectData() {
 		return {
 			mapWidth: mapWidth, mapHeight: mapHeight, gridW: gridW, gridH: gridH, showGrid: showGrid,
-			zoom: zoom, bgAlpha: bgAlpha, bgPosX: bgPosX, bgPosY: bgPosY, bgScale: bgScale,
+			zoom: zoom, bgAlpha: bgAlpha, bgPosX: bgPosX, bgPosY: bgPosY, bgScale: bgScale, bgAngle: bgAngle,
 			bgImageData: bgImageData, lineWidth: lineWidth, pointRadius: pointRadius, arrowSize: arrowSize,
 			rivers: rivers, theme: document.body.classList.contains("light-mode") ? "light" : "dark"
 		};
@@ -858,6 +864,7 @@ rivers.build(yellow, meander=0.2)"></textarea>
 		bgPosX = data.bgPosX || 0;
 		bgPosY = data.bgPosY || 0;
 		bgScale = data.bgScale || 1.0;
+		bgAngle = parseFloat(data.bgAngle) || 0;
 		bgImageData = data.bgImageData || null;
 		lineWidth = data.lineWidth || 4;
 		pointRadius = data.pointRadius || 6;
@@ -883,6 +890,7 @@ rivers.build(yellow, meander=0.2)"></textarea>
 		document.getElementById("bgPosX").value = bgPosX;
 		document.getElementById("bgPosY").value = bgPosY;
 		document.getElementById("bgScaleInput").value = bgScale;
+		document.getElementById("bgAngleInput").value = bgAngle;
 		document.getElementById("bgAlphaSlider").value = bgAlpha;
 		document.getElementById("lineWidthInput").value = lineWidth;
 		document.getElementById("pointRadiusInput").value = pointRadius;
@@ -1063,6 +1071,7 @@ rivers.build(yellow, meander=0.2)"></textarea>
 		document.getElementById("bgPosX").oninput = function(e) { bgPosX = parseFloat(e.target.value) || 0; redrawCanvas(); autoSave(); };
 		document.getElementById("bgPosY").oninput = function(e) { bgPosY = parseFloat(e.target.value) || 0; redrawCanvas(); autoSave(); };
 		document.getElementById("bgScaleInput").oninput = function(e) { bgScale = parseFloat(e.target.value) || 1; redrawCanvas(); autoSave(); };
+		document.getElementById("bgAngleInput").oninput = function(e) { bgAngle = parseFloat(e.target.value) || 0; redrawCanvas(); autoSave(); };
 		document.getElementById("lineWidthInput").oninput = function(e) { lineWidth = parseFloat(e.target.value) || 1; redrawCanvas(); autoSave(); };
 		document.getElementById("pointRadiusInput").oninput = function(e) { pointRadius = parseFloat(e.target.value) || 2; redrawCanvas(); autoSave(); };
 		document.getElementById("arrowSizeInput").oninput = function(e) { arrowSize = parseFloat(e.target.value) || 0; redrawCanvas(); autoSave(); };

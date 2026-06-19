@@ -139,6 +139,10 @@
                         <input type="number" id="bgScale" value="1" step="0.05" min="0.1">
                     </div>
                     <div class="group">
+                        <label>Angle (degrees)</label>
+                        <input type="number" id="bgAngle" value="0" step="1">
+                    </div>
+                    <div class="group">
                         <label>Opacity</label>
                         <input type="range" id="overlayOpacity" min="0" max="1" step="0.05" value="0.5">
                     </div>
@@ -314,6 +318,7 @@ self.drivers.append(ClimateDriver("MOISTURE", "RADIAL", (0.7, 1), 1.6, 0, 0.45))
     const bgPosX = document.getElementById('bgPosX');
     const bgPosY = document.getElementById('bgPosY');
     const bgScale = document.getElementById('bgScale');
+    const bgAngle = document.getElementById('bgAngle');
     const driverList = document.getElementById('driverList');
     const driverTarget = document.getElementById('driverTarget');
     const driverType = document.getElementById('driverType');
@@ -360,6 +365,7 @@ self.drivers.append(ClimateDriver("MOISTURE", "RADIAL", (0.7, 1), 1.6, 0, 0.45))
             bgPosX: bgPosX.value,
             bgPosY: bgPosY.value,
             bgScale: bgScale.value,
+            bgAngle: bgAngle.value,
             importText: importArea.value,
             outputText: outputArea.value,
             drivers: getCurrentDrivers(),
@@ -382,6 +388,7 @@ self.drivers.append(ClimateDriver("MOISTURE", "RADIAL", (0.7, 1), 1.6, 0, 0.45))
         bgPosX.value = data.bgPosX === undefined ? 0 : data.bgPosX;
         bgPosY.value = data.bgPosY === undefined ? 0 : data.bgPosY;
         bgScale.value = data.bgScale === undefined ? 1 : data.bgScale;
+        bgAngle.value = data.bgAngle === undefined ? 0 : data.bgAngle;
         importArea.value = data.importText || importArea.value;
         overlayImageData = data.overlayImageData || null;
         viewMode = data.viewMode || 'TEMP';
@@ -938,11 +945,17 @@ self.drivers.append(ClimateDriver("MOISTURE", "RADIAL", (0.7, 1), 1.6, 0, 0.45))
 
         // Draw Overlay Image
         if (overlayImg) {
+            ctx.save();
             ctx.globalAlpha = parseFloat(overlayOpacity.value);
             const scale = parseFloat(bgScale.value) || 1;
             const posX = parseFloat(bgPosX.value) || 0;
             const posY = parseFloat(bgPosY.value) || 0;
-            ctx.drawImage(overlayImg, posX, posY, canvas.width * scale, canvas.height * scale);
+            const angle = parseFloat(bgAngle.value) || 0;
+            const dw = canvas.width * scale, dh = canvas.height * scale;
+            ctx.translate(posX + dw / 2, posY + dh / 2);
+            ctx.rotate(angle * Math.PI / 180);
+            ctx.drawImage(overlayImg, -dw / 2, -dh / 2, dw, dh);
+            ctx.restore();
         }
         ctx.globalAlpha = 1.0;
         drawDriverOverlays(drivers, w, h, p);
@@ -1116,7 +1129,7 @@ self.drivers.append(ClimateDriver("MOISTURE", "RADIAL", (0.7, 1), 1.6, 0, 0.45))
     }
 
     // Event Listeners
-    ['mapW', 'mapH', 'pixelSize', 'baseT', 'baseM', 'noiseMult', 'overlayOpacity', 'bgPosX', 'bgPosY', 'bgScale'].forEach(bindSettingInput);
+    ['mapW', 'mapH', 'pixelSize', 'baseT', 'baseM', 'noiseMult', 'overlayOpacity', 'bgPosX', 'bgPosY', 'bgScale', 'bgAngle'].forEach(bindSettingInput);
 
     document.getElementById('themeToggleBtn').onclick = () => {
         saveHistoryState();

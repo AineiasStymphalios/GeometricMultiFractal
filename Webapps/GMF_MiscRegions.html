@@ -150,6 +150,7 @@
 						</div>
 					</div>
 					<div class="group"><label>📏 Scale</label><input id="bgScale" type="number" value="1" step="0.05" min="0.1" style="width:100%"></div>
+					<div class="group"><label>Angle (degrees)</label><input id="bgAngle" type="number" value="0" step="1" style="width:100%"></div>
 					<div class="group"><label>🌫️ Opacity</label><input id="bgAlpha" type="range" min="0" max="1" step="0.01" value="1"></div>
 				</div>
 			</div>
@@ -227,7 +228,7 @@
 <script>
 (function(){
 	let mapWidth = 1000, mapHeight = 700, gridW = 80, gridH = 40, showGrid = false, zoom = 1;
-	let bgImageData = null, backgroundImage = null, bgAlpha = 1, bgX = 0, bgY = 0, bgScale = 1;
+	let bgImageData = null, backgroundImage = null, bgAlpha = 1, bgX = 0, bgY = 0, bgScale = 1, bgAngle = 0;
 	let lineWidth = 2.5, textSize = 12, fillAlpha = 0.28;
 	let regions = [], selectedId = null, dragMode = null, activeHandle = null, dragStart = null, dragRegion = null;
 	let undoStack = [], redoStack = [];
@@ -319,7 +320,9 @@
 		if (backgroundImage && backgroundImage.complete) {
 			ctx.save(); ctx.globalAlpha = bgAlpha;
 			const dw = backgroundImage.width * bgScale, dh = backgroundImage.height * bgScale;
-			ctx.drawImage(backgroundImage, (mapWidth/2 + bgX) - dw/2, (mapHeight/2 + bgY) - dh/2, dw, dh);
+			ctx.translate(mapWidth/2 + bgX, mapHeight/2 + bgY);
+			ctx.rotate(bgAngle * Math.PI / 180);
+			ctx.drawImage(backgroundImage, -dw/2, -dh/2, dw, dh);
 			ctx.restore();
 		} else {
 			ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--bg-canvas-inner"); ctx.fillRect(0,0,mapWidth,mapHeight);
@@ -600,12 +603,12 @@
 		saveHistory(); regions = newRegions; selectedId = regions[0].id; redraw(); updatePanels(); autoSave();
 	}
 
-	function projectData() { return { mapWidth:mapWidth, mapHeight:mapHeight, gridW:gridW, gridH:gridH, showGrid:showGrid, zoom:zoom, bgImageData:bgImageData, bgAlpha:bgAlpha, bgX:bgX, bgY:bgY, bgScale:bgScale, lineWidth:lineWidth, textSize:textSize, fillAlpha:fillAlpha, regions:regions, theme:document.body.classList.contains("light-mode") ? "light" : "dark" }; }
+	function projectData() { return { mapWidth:mapWidth, mapHeight:mapHeight, gridW:gridW, gridH:gridH, showGrid:showGrid, zoom:zoom, bgImageData:bgImageData, bgAlpha:bgAlpha, bgX:bgX, bgY:bgY, bgScale:bgScale, bgAngle:bgAngle, lineWidth:lineWidth, textSize:textSize, fillAlpha:fillAlpha, regions:regions, theme:document.body.classList.contains("light-mode") ? "light" : "dark" }; }
 	function loadProject(data) {
-		mapWidth=data.mapWidth||1000; mapHeight=data.mapHeight||700; gridW=data.gridW||80; gridH=data.gridH||40; showGrid=!!data.showGrid; zoom=data.zoom||1; bgImageData=data.bgImageData||null; bgAlpha=data.bgAlpha===undefined?1:data.bgAlpha; bgX=data.bgX||0; bgY=data.bgY||0; bgScale=data.bgScale||1; lineWidth=data.lineWidth||2.5; textSize=data.textSize||12; fillAlpha=data.fillAlpha===undefined?0.28:data.fillAlpha; regions=data.regions||[]; selectedId=regions.length?regions[0].id:null; regions.forEach(function(r){ normalizeBonuses(r); if (!r.color || isOldDefaultColor(r.color)) r.color = colorForKind(r.kind); }); document.body.classList.toggle("light-mode", data.theme==="light"); syncStateInputs(); loadBg(); redraw(); updatePanels();
+		mapWidth=data.mapWidth||1000; mapHeight=data.mapHeight||700; gridW=data.gridW||80; gridH=data.gridH||40; showGrid=!!data.showGrid; zoom=data.zoom||1; bgImageData=data.bgImageData||null; bgAlpha=data.bgAlpha===undefined?1:data.bgAlpha; bgX=data.bgX||0; bgY=data.bgY||0; bgScale=data.bgScale||1; bgAngle=parseFloat(data.bgAngle)||0; lineWidth=data.lineWidth||2.5; textSize=data.textSize||12; fillAlpha=data.fillAlpha===undefined?0.28:data.fillAlpha; regions=data.regions||[]; selectedId=regions.length?regions[0].id:null; regions.forEach(function(r){ normalizeBonuses(r); if (!r.color || isOldDefaultColor(r.color)) r.color = colorForKind(r.kind); }); document.body.classList.toggle("light-mode", data.theme==="light"); syncStateInputs(); loadBg(); redraw(); updatePanels();
 	}
 	function syncStateInputs() {
-		document.getElementById("mapW").value=mapWidth; document.getElementById("mapH").value=mapHeight; document.getElementById("gridW").value=gridW; document.getElementById("gridH").value=gridH; document.getElementById("zoomSlider").value=zoom; document.getElementById("zoomLabel").innerText=Math.round(zoom*100)+"%"; document.getElementById("gridBtn").innerText=showGrid?"Grid On":"Grid Off"; document.getElementById("gridBtn").classList.toggle("active", showGrid); document.getElementById("bgX").value=bgX; document.getElementById("bgY").value=bgY; document.getElementById("bgScale").value=bgScale; document.getElementById("bgAlpha").value=bgAlpha; document.getElementById("lineWidth").value=lineWidth; document.getElementById("textSize").value=textSize; document.getElementById("fillAlpha").value=fillAlpha;
+		document.getElementById("mapW").value=mapWidth; document.getElementById("mapH").value=mapHeight; document.getElementById("gridW").value=gridW; document.getElementById("gridH").value=gridH; document.getElementById("zoomSlider").value=zoom; document.getElementById("zoomLabel").innerText=Math.round(zoom*100)+"%"; document.getElementById("gridBtn").innerText=showGrid?"Grid On":"Grid Off"; document.getElementById("gridBtn").classList.toggle("active", showGrid); document.getElementById("bgX").value=bgX; document.getElementById("bgY").value=bgY; document.getElementById("bgScale").value=bgScale; document.getElementById("bgAngle").value=bgAngle; document.getElementById("bgAlpha").value=bgAlpha; document.getElementById("lineWidth").value=lineWidth; document.getElementById("textSize").value=textSize; document.getElementById("fillAlpha").value=fillAlpha;
 	}
 	function loadBg() { if (!bgImageData) { backgroundImage=null; document.getElementById("bgStatus").innerText="No Image"; return; } backgroundImage=new Image(); backgroundImage.onload=function(){ document.getElementById("bgStatus").innerText="Loaded"; redraw(); }; backgroundImage.src=bgImageData; }
 
@@ -635,7 +638,7 @@
 		document.getElementById("fitBtn").onclick=function(){ const c=document.getElementById("canvasWrap"); zoom=clamp(Math.min((c.clientWidth-40)/mapWidth,(c.clientHeight-40)/mapHeight),0.1,2.5); document.getElementById("zoomSlider").value=zoom; document.getElementById("zoomLabel").innerText=Math.round(zoom*100)+"%"; redraw(); autoSave(); };
 		document.getElementById("uploadBgBtn").onclick=function(){ const input=document.createElement("input"); input.type="file"; input.accept="image/*"; input.onchange=function(e){ const file=e.target.files[0]; if(!file)return; const reader=new FileReader(); reader.onload=function(ev){ bgImageData=ev.target.result; loadBg(); autoSave(); }; reader.readAsDataURL(file); }; input.click(); };
 		document.getElementById("clearBgBtn").onclick=function(){ bgImageData=null; backgroundImage=null; document.getElementById("bgStatus").innerText="No Image"; redraw(); autoSave(); };
-		document.getElementById("bgX").oninput=function(e){ bgX=parseFloat(e.target.value)||0; redraw(); autoSave(); }; document.getElementById("bgY").oninput=function(e){ bgY=parseFloat(e.target.value)||0; redraw(); autoSave(); }; document.getElementById("bgScale").oninput=function(e){ bgScale=parseFloat(e.target.value)||1; redraw(); autoSave(); }; document.getElementById("bgAlpha").oninput=function(e){ bgAlpha=parseFloat(e.target.value); redraw(); autoSave(); };
+		document.getElementById("bgX").oninput=function(e){ bgX=parseFloat(e.target.value)||0; redraw(); autoSave(); }; document.getElementById("bgY").oninput=function(e){ bgY=parseFloat(e.target.value)||0; redraw(); autoSave(); }; document.getElementById("bgScale").oninput=function(e){ bgScale=parseFloat(e.target.value)||1; redraw(); autoSave(); }; document.getElementById("bgAngle").oninput=function(e){ bgAngle=parseFloat(e.target.value)||0; redraw(); autoSave(); }; document.getElementById("bgAlpha").oninput=function(e){ bgAlpha=parseFloat(e.target.value); redraw(); autoSave(); };
 		document.getElementById("lineWidth").oninput=function(e){ lineWidth=parseFloat(e.target.value)||1; redraw(); autoSave(); }; document.getElementById("textSize").oninput=function(e){ textSize=parseFloat(e.target.value)||12; redraw(); autoSave(); }; document.getElementById("fillAlpha").oninput=function(e){ fillAlpha=parseFloat(e.target.value); redraw(); autoSave(); };
 		document.getElementById("saveProjectBtn").onclick=function(){ const blob=new Blob([JSON.stringify(projectData(),null,2)],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="gmf_misc_regions_project.json"; a.click(); };
 		document.getElementById("loadProjectBtn").onclick=function(){ const input=document.createElement("input"); input.type="file"; input.accept=".json"; input.onchange=function(e){ const file=e.target.files[0]; if(!file)return; const reader=new FileReader(); reader.onload=function(ev){ loadProject(JSON.parse(ev.target.result)); autoSave(); }; reader.readAsText(file); }; input.click(); };
