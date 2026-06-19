@@ -8,39 +8,11 @@ import math
 
 '''
 ##############################################################################
-MULTILAYERED FRACTAL NOTES
-
-The MultilayeredFractal class was created for use with this script.
-
-I worked to make it adaptable to other scripts, though, and eventually it
-migrated in to the MapUtil file along with the other primary map classes.
-
-- Bob Thomas July 13, 2005
-
-
-TERRA NOTES
-
-Terra turns out to be our largest size map. This is the only map script
-in the original release of Civ4 where the grids are this large!
-
-This script is also the one that got me started in to map scripting. I had 
-this idea early in the development cycle and just kept pestering until Soren 
-turned me loose on it, finally. Once I got going, I just kept on going!
-
-- Bob Thomas   September 20, 2005
-
-EARTH2 NOTES
-
-This is based purely on the Terra script, albeit with a lot more similarity
-to Earth in terms of landmasses. Rocky Climate and Normal Sea Levels strongly
-recommended for maximum earthiness.
-
-##############################################################################
-MEDITERRANEAN, CENTRAL PLAINS, GEOMETRIC MULTIFRACTAL NOTES
+GEOMETRIC MULTIFRACTAL NOTES
 
 This mapscript was based on Earth2.py.
 
-Below are its features:
+Below are its main features:
 - GeometricMultiFractal Genrator: an improved MultilayeredFractal generator
 	- Takes matrix inputs
 	- More property inputs for regions
@@ -54,14 +26,8 @@ Below are its features:
 		- Region specific bonus placement
 - Custom River / Waterway Generator
 	- Allows generation of rivers and waterways through map coordinates.
-- Default River generator replaced with generator based on that of Tectonics.py
-- Two tile coasts (expandCoastToTwoTiles)
-- Option: Historical starting locations
-	- Historical (Shuffle): Randomly places all players in primary, secondary, and tertiary locations, in order of priority. 
-		Remaining players are placed with default methods.
-	- Historical (Fixed): If there are any map-appropriate Vanilla BTS Civilizations in the playerlist, they are placed on fixed regions. 
-		Remaining players assignments fall back to the Shuffle method, and then to default methods.
-- Option: Mountain range settings
+- "Historical" Starting Locations
+	- Allows one to force specific civilizations to spawn within a specified region
 
 - AineiasStymph, April 29, 2026
 ##############################################################################
@@ -93,7 +59,8 @@ def getCustomMapOptionName(argsList):
 		"River Options",
 		"Historical Resources",
 		"Minimum land food at start",
-		"Start Options"
+		"Start Options",
+		"World Wrap"
 	]
 	if index < len(names):
 		return names[index]
@@ -106,7 +73,8 @@ def getNumCustomMapOptionValues(argsList):
 	if index == 2: return 4 # Rivers: Disabled, Regular, Bridged Waterway, Bridgeless
 	if index == 3: return 2 # Historical Resources: Yes/No
 	if index == 4: return 3 # Food: 0, 1, 2
-	if index == 5: return 2 # Start Options: Default, Fixed-Shuffle
+	if index == 5: return 2 # Start Options: Default, Fixed
+	if index == 6: return 3
 	return 0
 
 def getCustomMapOptionDescAt(argsList):
@@ -126,15 +94,19 @@ def getCustomMapOptionDescAt(argsList):
 		if selection == 2: return "Bridged Waterways"
 		return "Bridgeless Waterways"
 	if index == 3: # Historical Resources
-		if selection == 0: return "Historical Placement"
-		return "Vanilla Distribution"
+		if selection == 0: return "Vanilla Distribution"
+		return "Historical Placement"
 	if index == 4: # Food
-		if selection == 0: return "Standard"
+		if selection == 0: return "Disabled"
 		if selection == 1: return "At least 1"
 		return "At least 2"
 	if index == 5: # Start Options
 		if selection == 0: return "Vanilla"
 		return "Historical"
+	if index == 3: # Start Options
+		if selection == 0: return "Flat"
+		elif selection == 1: return "Cylindrical"
+		return "Toroidal"
 	return ""
 
 def getCustomMapOptionDefault(argsList):
@@ -145,6 +117,7 @@ def getCustomMapOptionDefault(argsList):
 	if index == 3: return 0 # Historical
 	if index == 4: return 1 # 1 Food
 	if index == 5: return 0 # Vanilla
+	if index == 6: return 0 # Flat
 	return 0
 
 # -----------------------------------------------------------------------------
@@ -169,10 +142,12 @@ def isSeaLevelMap():
 	return 0
 
 def getWrapX():
-	return False
+	map = CyMap()
+	return (map.getCustomMapOption(6) == 1 or map.getCustomMapOption(3) == 2)
 
 def getWrapY():
-	return False
+	map = CyMap()
+	return (map.getCustomMapOption(6) == 2)
 
 def isClimateMap():
 	return 1
@@ -231,6 +206,54 @@ class GeometricMultiFractal(CvMapGeneratorUtil.MultilayeredFractal):
 	Fractal generator supporting geometric masking and rotation.
 	Shapes: RECT, ELLIPSE, ISOTRI.
 	"""
+	def getReducedEdgeWaterThreshold(self, r_type, water_prc, iWaterThreshold, iWaterThresholds,
+	                                 rx, ry, invRxSq, invRySq, radius_x, radius_y,
+	                                 height_tiles, b_dist, v_dist, max_rx):
+		fCenterInner = 0.45
+		fCenterOuter = 0.65
+		fCenterMultiplier = 2.0
+		fEdgeInner = 0.80
+		fEdgeOuter = 1.00
+		fEdgeMultiplier = 1.0
+		fIsotriEdgeBand = 0.20
+		edgeStrength = 0.0
+		centerStrength = 0.0
+		shape_fill = 0.0
+		if r_type == "ELLIPSE":
+			shape_fill = math.sqrt((rx*rx * invRxSq) + (ry*ry * invRySq))
+		elif r_type == "ISOTRI":
+			edgeBand = min(radius_x, height_tiles) * fIsotriEdgeBand
+			edgeMargin = min(ry + b_dist, v_dist - ry, max_rx - abs(rx))
+			if edgeBand <= 0:
+				shape_fill = 1.0
+			else:
+				shape_fill = 1.0 - (edgeMargin / edgeBand)
+		else:
+			if radius_x > 0: shape_fill = abs(rx) / radius_x
+			if radius_y > 0:
+				y_fill = abs(ry) / radius_y
+				if y_fill > shape_fill: shape_fill = y_fill
+		if shape_fill < fCenterInner:
+			centerStrength = 1.0 * fCenterMultiplier
+		elif shape_fill < fCenterOuter:
+			if fCenterOuter > fCenterInner:
+				centerStrength = ((fCenterOuter - shape_fill) / (fCenterOuter - fCenterInner)) * fCenterMultiplier
+		if shape_fill > fEdgeInner:
+			if fEdgeOuter > fEdgeInner:
+				edgeStrength = ((shape_fill - fEdgeInner) / (fEdgeOuter - fEdgeInner)) * fEdgeMultiplier
+		if edgeStrength > 1.0: edgeStrength = 1.0
+		if centerStrength > 1.0: centerStrength = 1.0
+		if edgeStrength > 0.0:
+			iLocalWaterPercent = water_prc + int((100 - water_prc) * edgeStrength)
+			if iLocalWaterPercent > 100: iLocalWaterPercent = 100
+			return iWaterThresholds[iLocalWaterPercent]
+		elif centerStrength > 0.0:
+			iLocalWaterPercent = int(water_prc * (1.0 - centerStrength))
+			if iLocalWaterPercent < 0: iLocalWaterPercent = 0
+			return iWaterThresholds[iLocalWaterPercent]
+
+		return iWaterThreshold
+
 	def generatePlotsByRegion(self, region_data):
 		sea = 0 
 		
@@ -256,7 +279,7 @@ class GeometricMultiFractal(CvMapGeneratorUtil.MultilayeredFractal):
 				terrain_profiles[key] = (new_h, new_p)
 
 		for data in region_data:
-			name, r_type_raw, cx, cy, d1, d2, d3, terrain, grain, h_grain, water_prc = data
+			name, r_type_raw, cx, cy, d1, d2, d3, terrain, grain, h_grain, water_prc, bReduceEdges = data
 			r_type = r_type_raw.upper()
 			
 			# 1. Coordinate Math
@@ -265,12 +288,48 @@ class GeometricMultiFractal(CvMapGeneratorUtil.MultilayeredFractal):
 			radius_x = (d1 / 2.0) * self.iW
 			radius_y = (d2 / 2.0) * self.iH
 			height_tiles = d2 * self.iH
-			max_radius_tiles = math.sqrt(radius_x**2 + radius_y**2)
+
+			# Rotation/Geometry Math
+			rad = -math.radians(d3)
+			cosA, sinA = math.cos(rad), math.sin(rad)
+			v_dist, b_dist = (2.0 / 3.0) * height_tiles, (1.0 / 3.0) * height_tiles
+			invRxSq, invRySq = 0.0, 0.0
+			if radius_x > 0: invRxSq = 1.0 / (radius_x * radius_x)
+			if radius_y > 0: invRySq = 1.0 / (radius_y * radius_y)
+
+			if r_type == "ELLIPSE":
+				x_extent = math.sqrt((radius_x * cosA) * (radius_x * cosA) + (radius_y * sinA) * (radius_y * sinA))
+				y_extent = math.sqrt((radius_x * sinA) * (radius_x * sinA) + (radius_y * cosA) * (radius_y * cosA))
+				min_x = -x_extent
+				max_x = x_extent
+				min_y = -y_extent
+				max_y = y_extent
+			elif r_type == "ISOTRI":
+				points = [(-radius_x, -b_dist), (radius_x, -b_dist), (0.0, v_dist)]
+				min_x = 0.0
+				max_x = 0.0
+				min_y = 0.0
+				max_y = 0.0
+				for iPoint in range(len(points)):
+					local_x, local_y = points[iPoint]
+					world_dx = local_x * cosA + local_y * sinA
+					world_dy = -local_x * sinA + local_y * cosA
+					if iPoint == 0 or world_dx < min_x: min_x = world_dx
+					if iPoint == 0 or world_dx > max_x: max_x = world_dx
+					if iPoint == 0 or world_dy < min_y: min_y = world_dy
+					if iPoint == 0 or world_dy > max_y: max_y = world_dy
+			else:
+				x_extent = abs(radius_x * cosA) + abs(radius_y * sinA)
+				y_extent = abs(radius_x * sinA) + abs(radius_y * cosA)
+				min_x = -x_extent
+				max_x = x_extent
+				min_y = -y_extent
+				max_y = y_extent
 			
-			iWest = max(0, int(center_x - max_radius_tiles))
-			iEast = min(self.iW - 1, int(center_x + max_radius_tiles))
-			iSouth = max(0, int(center_y - max_radius_tiles))
-			iNorth = min(self.iH - 1, int(center_y + max_radius_tiles))
+			iWest = max(0, int(center_x + min_x))
+			iEast = min(self.iW - 1, int(center_x + max_x))
+			iSouth = max(0, int(center_y + min_y))
+			iNorth = min(self.iH - 1, int(center_y + max_y))
 			
 			reg_w, reg_h = iEast - iWest + 1, iNorth - iSouth + 1
 			if reg_w <= 0 or reg_h <= 0: continue
@@ -280,7 +339,7 @@ class GeometricMultiFractal(CvMapGeneratorUtil.MultilayeredFractal):
 			
 			# This fractal is now shared by BOTH Land and Water regions
 			regionContFrac = CyFractal()
-			regionContFrac.fracInit(reg_w, reg_h, grain, self.dice, 0, -1, -1)
+			regionContFrac.fracInit(reg_w, reg_h, grain, self.dice, self.iFlags, -1, -1)
 			
 			# Calculate threshold for the "Active" part of the fractal
 			if water_prc <= 0:
@@ -291,6 +350,10 @@ class GeometricMultiFractal(CvMapGeneratorUtil.MultilayeredFractal):
 				iWaterThreshold = regionContFrac.getHeightFromPercent(water_prc + sea)
 
 			is_subtractive = (terrain == "water")
+			iWaterThresholds = []
+			if bReduceEdges and not is_subtractive and water_prc > 0 and water_prc < 100:
+				for iPercent in range(101):
+					iWaterThresholds.append(regionContFrac.getHeightFromPercent(iPercent))
 			
 			# Only Land regions need Hill/Peak fractals
 			if not is_subtractive:
@@ -302,14 +365,6 @@ class GeometricMultiFractal(CvMapGeneratorUtil.MultilayeredFractal):
 				h_dens, p_dens = terrain_profiles.get(terrain, terrain_profiles["default"])
 				iHillThreshold = regionHillsFrac.getHeightFromPercent(100 - h_dens)
 				iPeakThreshold = regionPeaksFrac.getHeightFromPercent(100 - p_dens)
-
-			# Rotation/Geometry Math
-			rad = -math.radians(d3)
-			cosA, sinA = math.cos(rad), math.sin(rad)
-			v_dist, b_dist = (2.0 / 3.0) * height_tiles, (1.0 / 3.0) * height_tiles
-			invRxSq, invRySq = 0.0, 0.0
-			if radius_x > 0: invRxSq = 1.0 / (radius_x * radius_x)
-			if radius_y > 0: invRySq = 1.0 / (radius_y * radius_y)
 
 			# 3. Iterate over the grid
 			for x in range(reg_w):
@@ -327,6 +382,7 @@ class GeometricMultiFractal(CvMapGeneratorUtil.MultilayeredFractal):
 					rx = dx * cosA - dy * sinA
 					ry = dx * sinA + dy * cosA
 					is_inside = False
+					max_rx = 0.0
 					if r_type == "ELLIPSE":
 						if (rx*rx * invRxSq) + (ry*ry * invRySq) <= 1.0: is_inside = True
 					elif r_type == "ISOTRI":
@@ -341,15 +397,22 @@ class GeometricMultiFractal(CvMapGeneratorUtil.MultilayeredFractal):
 					# Decide plot type
 					world_i = world_y * self.iW + world_x
 					val = regionContFrac.getHeight(x, y)
+					# Edge reduction
+					iLocalWaterThreshold = iWaterThreshold
+					if bReduceEdges and not is_subtractive and water_prc > 0 and water_prc < 100:
+						iLocalWaterThreshold = self.getReducedEdgeWaterThreshold(
+							r_type, water_prc, iWaterThreshold, iWaterThresholds,
+							rx, ry, invRxSq, invRySq, radius_x, radius_y,
+							height_tiles, b_dist, v_dist, max_rx)
 					
 					if is_subtractive:
 						# WATER REGION: If fractal roll is within the water percent, punch a hole.
 						# Setting water_prc=100 will now correctly turn every tile to ocean.
-						if val <= iWaterThreshold:
+						if val <= iLocalWaterThreshold:
 							self.wholeworldPlotTypes[world_i] = PlotTypes.PLOT_OCEAN
 					else:
 						# LAND REGION: Skip tiles within the water percent threshold (remains ocean).
-						if val <= iWaterThreshold: 
+						if val <= iLocalWaterThreshold: 
 							continue
 						
 						# Process Hills and Peaks for land
@@ -391,58 +454,58 @@ def generatePlotTypes():
 	
 	regions = []
 	if accuracy == 0: # High ACCURACY
-		# Name, Type, CX, CY, W, H, Angle, Terrain, Grain, Hills, Water%
+		# Name, Type, CX, CY, W, H, Angle, Terrain, Grain, Hills, Water%, bReduceEdges
 		regions = [
-			("Darwin", "Ellipse", 0.439, 0.846, 0.161, 0.099, 0, "default", BalanceGrain, BalanceGrain, 5),
-			("QL_NSW_VIC", "Ellipse", 0.616, 0.433, 0.356, 0.412, 266, "default", GatherGrain, BalanceGrain, 5),
-			("NorthernT", "Ellipse", 0.495, 0.672, 0.332, 0.197, -28, "plateau", BalanceGrain, BalanceGrain, 5),
-			("GreatSandyDesert", "Rect", 0.313, 0.644, 0.206, 0.257, 50, "default", BalanceGrain, BalanceGrain, 10),
-			("WestAustralia", "Rect", 0.222, 0.454, 0.208, 0.389, 24, "default", BalanceGrain, BalanceGrain, 5),
-			("Cape York", "Isotri", 0.615, 0.744, 0.123, 0.280, 1, "default", BalanceGrain, BalanceGrain, 10),
-			("GDR_South", "Ellipse", 0.667, 0.339, 0.239, 0.122, 61, "highland", BalanceGrain, BalanceGrain, 0),
-			("GDR_N", "Ellipse", 0.665, 0.570, 0.280, 0.115, -63, "highland", BalanceGrain, BalanceGrain, 0),
-			("SouthAustralia", "Rect", 0.439, 0.390, 0.230, 0.339, -1, "flat", BalanceGrain, ScatterGrain, 0),
-			("Ellipse7", "Ellipse", 0.419, 0.587, 0.188, 0.188, 0, "highland", ScatterGrain, ScatterGrain, 10),
-			("SA_Plateau", "Ellipse", 0.530, 0.338, 0.080, 0.161, -31, "plateau", ScatterGrain, BalanceGrain, 0),
-			("Ellipse8", "Ellipse", 0.313, 0.729, 0.072, 0.122, 24, "plateau", BalanceGrain, BalanceGrain, 0),
-			("Tasmania", "Isotri", 0.629, 0.082, 0.114, 0.125, 180, "plateau", GatherGrain, BalanceGrain, 5),
-			("SouthNZ", "Rect", 0.875, 0.136, 0.083, 0.225, 319, "default", BalanceGrain, BalanceGrain, 12),
-			("NorthNZ", "Rect", 0.944, 0.275, 0.075, 0.135, -29, "default", BalanceGrain, BalanceGrain, 30),
-			("Northland", "Ellipse", 0.906, 0.377, 0.091, 0.040, -55, "flat", BalanceGrain, BalanceGrain, 10),
-			("EastIndies", "Rect", 0.127, 0.953, 0.256, 0.095, 0, "default", ScatterGrain, BalanceGrain, 60),
-			("NG_PortMoresby", "Ellipse", 0.706, 0.934, 0.146, 0.074, -49, "plateau", BalanceGrain, BalanceGrain, 20),
-			("NewGuinea", "Ellipse", 0.607, 0.998, 0.183, 0.089, 0, "default", BalanceGrain, BalanceGrain, 20),
-			("Timor", "Rect", 0.318, 0.955, 0.131, 0.048, 29, "default", GatherGrain, BalanceGrain, 20),
-			("Coral_Sea", "Rect", 0.753, 0.734, 0.091, 0.094, -24, "alpine", ScatterGrain, BalanceGrain, 85),
-			("GreatAustBight", "Ellipse", 0.356, 0.208, 0.314, 0.309, 0, "water", BalanceGrain, BalanceGrain, 90),
-			("WA Plateau", "Rect", 0.206, 0.500, 0.126, 0.200, 22, "plateau", BalanceGrain, BalanceGrain, 0),
-			("Rottnest_Is", "Rect", 0.107, 0.280, 0.060, 0.077, 0, "default", ScatterGrain, ScatterGrain, 85),
-			("New_Caledonia", "Rect", 0.925, 0.641, 0.062, 0.042, 324, "default", ScatterGrain, BalanceGrain, 50),
-			("LordHowe_Norfolk_Isl", "Rect", 0.822, 0.410, 0.056, 0.283, 0, "default", ScatterGrain, BalanceGrain, 90),
+			("Darwin", "Ellipse", 0.439, 0.846, 0.161, 0.099, 0, "default", BalanceGrain, BalanceGrain, 5, False),
+			("QL_NSW_VIC", "Ellipse", 0.616, 0.433, 0.356, 0.412, 266, "default", GatherGrain, BalanceGrain, 5, False),
+			("NorthernT", "Ellipse", 0.495, 0.672, 0.332, 0.197, -28, "plateau", BalanceGrain, BalanceGrain, 5, False),
+			("GreatSandyDesert", "Rect", 0.313, 0.644, 0.206, 0.257, 50, "default", BalanceGrain, BalanceGrain, 10, False),
+			("WestAustralia", "Rect", 0.222, 0.454, 0.208, 0.389, 24, "default", BalanceGrain, BalanceGrain, 5, False),
+			("Cape York", "Isotri", 0.615, 0.744, 0.123, 0.280, 1, "default", BalanceGrain, BalanceGrain, 10, False),
+			("GDR_South", "Ellipse", 0.667, 0.339, 0.239, 0.122, 61, "highland", BalanceGrain, BalanceGrain, 0, False),
+			("GDR_N", "Ellipse", 0.665, 0.570, 0.280, 0.115, -63, "highland", BalanceGrain, BalanceGrain, 0, False),
+			("SouthAustralia", "Rect", 0.439, 0.390, 0.230, 0.339, -1, "flat", BalanceGrain, ScatterGrain, 0, False),
+			("Ellipse7", "Ellipse", 0.419, 0.587, 0.188, 0.188, 0, "highland", ScatterGrain, ScatterGrain, 10, False),
+			("SA_Plateau", "Ellipse", 0.530, 0.338, 0.080, 0.161, -31, "plateau", ScatterGrain, BalanceGrain, 0, False),
+			("Ellipse8", "Ellipse", 0.313, 0.729, 0.072, 0.122, 24, "plateau", BalanceGrain, BalanceGrain, 0, False),
+			("Tasmania", "Isotri", 0.629, 0.082, 0.114, 0.125, 180, "plateau", GatherGrain, BalanceGrain, 5, False),
+			("SouthNZ", "Rect", 0.875, 0.136, 0.083, 0.225, 319, "default", BalanceGrain, BalanceGrain, 12, False),
+			("NorthNZ", "Rect", 0.944, 0.275, 0.075, 0.135, -29, "default", BalanceGrain, BalanceGrain, 30, False),
+			("Northland", "Ellipse", 0.906, 0.377, 0.091, 0.040, -55, "flat", BalanceGrain, BalanceGrain, 10, False),
+			("EastIndies", "Rect", 0.127, 0.953, 0.256, 0.095, 0, "default", ScatterGrain, BalanceGrain, 60, False),
+			("NG_PortMoresby", "Ellipse", 0.706, 0.934, 0.146, 0.074, -49, "plateau", BalanceGrain, BalanceGrain, 20, False),
+			("NewGuinea", "Ellipse", 0.607, 0.998, 0.183, 0.089, 0, "default", BalanceGrain, BalanceGrain, 20, False),
+			("Timor", "Rect", 0.318, 0.955, 0.131, 0.048, 29, "default", GatherGrain, BalanceGrain, 20, False),
+			("Coral_Sea", "Rect", 0.753, 0.734, 0.091, 0.094, -24, "alpine", ScatterGrain, BalanceGrain, 85, False),
+			("GreatAustBight", "Ellipse", 0.356, 0.208, 0.314, 0.309, 0, "water", BalanceGrain, BalanceGrain, 90, False),
+			("WA Plateau", "Rect", 0.206, 0.500, 0.126, 0.200, 22, "plateau", BalanceGrain, BalanceGrain, 0, False),
+			("Rottnest_Is", "Rect", 0.107, 0.280, 0.060, 0.077, 0, "default", ScatterGrain, ScatterGrain, 85, False),
+			("New_Caledonia", "Rect", 0.925, 0.641, 0.062, 0.042, 324, "default", ScatterGrain, BalanceGrain, 50, False),
+			("LordHowe_Norfolk_Isl", "Rect", 0.822, 0.410, 0.056, 0.283, 0, "default", ScatterGrain, BalanceGrain, 90, False),
 		]
 	elif accuracy == 1: # Medium ACCURACY
-		# Name, Type, CX, CY, W, H, Angle, Terrain, Grain, Hills, Water%
+		# Name, Type, CX, CY, W, H, Angle, Terrain, Grain, Hills, Water%, bReduceEdges
 		regions = [
-			("Low_Fractal_Mainland", "Rect", 0.25, 0.50, 0.70, 1.2, 0, "default", ScatterGrain, ScatterGrain, 0),
-			("Low_Fractal_WesternMountains", "Rect", 0.05, 0.50, 0.2, 1.2, 0, "highland", ScatterGrain, ScatterGrain, 10),
-			("Low_Fractal_Coast", "Ellipse", 0.4, 0.2, 0.9, 0.9, 0, "default", BalanceGrain, ScatterGrain, 15),
-			("Low_Fractal_North", "Ellipse", 0.8, 0.96, 0.6, 0.4, 45, "default", BalanceGrain, ScatterGrain, 20)
+			("Low_Fractal_Mainland", "Rect", 0.25, 0.50, 0.70, 1.2, 0, "default", ScatterGrain, ScatterGrain, 0, False),
+			("Low_Fractal_WesternMountains", "Rect", 0.05, 0.50, 0.2, 1.2, 0, "highland", ScatterGrain, ScatterGrain, 10, False),
+			("Low_Fractal_Coast", "Ellipse", 0.4, 0.2, 0.9, 0.9, 0, "default", BalanceGrain, ScatterGrain, 15, False),
+			("Low_Fractal_North", "Ellipse", 0.8, 0.96, 0.6, 0.4, 45, "default", BalanceGrain, ScatterGrain, 20, False)
 		]
 	else: # LOW Accuracy = Shapes
-		# Name, Type, CX, CY, W, H, Angle, Terrain, Grain, Hills, Water%
+		# Name, Type, CX, CY, W, H, Angle, Terrain, Grain, Hills, Water%, bReduceEdges
 		regions = [
-			("FlatRect", "Rect", 0.25, 0.75, 0.15, 0.15, 45, "flat", GatherGrain, BalanceGrain, 0),
-			("DefaultEllipse", "Ellipse", 0.50, 0.75, 0.2, 0.3, 30, "default", GatherGrain, BalanceGrain, 0),
-			("PlateauIso", "Isotri", 0.75, 0.75, 0.2, 0.2, 0, "plateau", GatherGrain, BalanceGrain, 0),
+			("FlatRect", "Rect", 0.25, 0.75, 0.15, 0.15, 45, "flat", GatherGrain, BalanceGrain, 0, False),
+			("DefaultEllipse", "Ellipse", 0.50, 0.75, 0.2, 0.3, 30, "default", GatherGrain, BalanceGrain, 0, False),
+			("PlateauIso", "Isotri", 0.75, 0.75, 0.2, 0.2, 0, "plateau", GatherGrain, BalanceGrain, 0, False),
 			
-			("HighlandRect", "Rect", 0.25, 0.5, 0.15, 0.15, 0, "highland", GatherGrain, BalanceGrain, 0),
-			("AlpineRect", "Rect", 0.50, 0.5, 0.15, 0.15, 0, "alpine", GatherGrain, BalanceGrain, 0),
-			("WaterRect", "Rect", 0.75, 0.5, 0.2, 0.2, 80, "flat", GatherGrain, BalanceGrain, 0),
-			("WaterEllipse", "Ellipse", 0.75, 0.5, 0.10, 0.10, 45, "water", BalanceGrain, BalanceGrain, 100),
+			("HighlandRect", "Rect", 0.25, 0.5, 0.15, 0.15, 0, "highland", GatherGrain, BalanceGrain, 0, False),
+			("AlpineRect", "Rect", 0.50, 0.5, 0.15, 0.15, 0, "alpine", GatherGrain, BalanceGrain, 0, False),
+			("WaterRect", "Rect", 0.75, 0.5, 0.2, 0.2, 80, "flat", GatherGrain, BalanceGrain, 0, False),
+			("WaterEllipse", "Ellipse", 0.75, 0.5, 0.10, 0.10, 45, "water", BalanceGrain, BalanceGrain, 100, False),
 			
-			("GatherGrainRect", "Rect", 0.25, 0.25, 0.15, 0.15, 0, "default", GatherGrain, BalanceGrain, 30),
-			("BalanceGrainRect", "Rect", 0.50, 0.25, 0.15, 0.15, 0, "default", BalanceGrain, BalanceGrain, 30),
-			("ScatterGrainRect", "Rect", 0.75, 0.25, 0.15, 0.15, 0, "default", ScatterGrain, BalanceGrain, 30),
+			("GatherGrainRect", "Rect", 0.25, 0.25, 0.15, 0.15, 0, "default", GatherGrain, BalanceGrain, 30, False),
+			("BalanceGrainRect", "Rect", 0.50, 0.25, 0.15, 0.15, 0, "default", BalanceGrain, BalanceGrain, 30, False),
+			("ScatterGrainRect", "Rect", 0.75, 0.25, 0.15, 0.15, 0, "default", ScatterGrain, BalanceGrain, 30, False),
 		]
 
 
@@ -2526,9 +2589,9 @@ def addCustomResources():
 	
 	# Custom Options
 	food_count = m.getCustomMapOption(4) # 0, 1, or 2
-	historical_on = (m.getCustomMapOption(3) == 0)
+	bHistorical = (m.getCustomMapOption(3) == 1)
 
-	if historical_on: # Region-specific resources
+	if bHistorical: # Region-specific resources
 		region_specs = [
 			{
 				"name": "NSW_gold",
@@ -2633,15 +2696,17 @@ def addCustomResources():
 		]
 		rm.add_region_specific(region_specs, bChangePlains=True)
 
-	if historical_on:  # Map-wide Swaps
+	if bHistorical:  # Map-wide Swaps
 		swap_rules =[]
 		swap_rules.append(("BONUS_CORN", "BONUS_WHEAT")) # Swap corn for wheat
 
 	rm.swap_resources(swap_rules)
 
 	# 3. Strategic resources
-	strategic_list = ["BONUS_COPPER", "BONUS_IRON", "BONUS_HORSE"]
-	rm.place_bonus_in_radius(strategic_list, radius=5)
+	Strategics = ["BONUS_COPPER", "BONUS_IRON", "BONUS_HORSE"]
+	Late_Strategics = ["BONUS_COAL", "BONUS_URANIUM", "BONUS_ALUMINUM", "BONUS_OIL"]
+	rm.place_bonus_in_radius(Strategics, radius=5)
+	rm.place_bonus_in_radius(Late_Strategics, radius=5)
 
 	# 4. Food resources
 	food_list = ["BONUS_WHEAT", "BONUS_RICE", "BONUS_CORN", "BONUS_COW", "BONUS_SHEEP", "BONUS_PIG", "BONUS_DEER"]
