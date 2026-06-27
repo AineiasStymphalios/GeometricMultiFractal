@@ -54,7 +54,6 @@ def getNumCustomMapOptions():
 def getCustomMapOptionName(argsList):
 	index = argsList[0]
 	names = [
-		"Geographic Accuracy",
 		"Peak Reduction",
 		"River Options",
 		"Historical Resources",
@@ -68,42 +67,37 @@ def getCustomMapOptionName(argsList):
 
 def getNumCustomMapOptionValues(argsList):
 	index = argsList[0]
-	if index == 0: return 3 # Geographic Accuracy
-	if index == 1: return 3 # Peaks: Flatten Alpine, Highland, Disabled
-	if index == 2: return 4 # Rivers: Disabled, Regular, Bridged Waterway, Bridgeless
-	if index == 3: return 2 # Historical Resources: Yes/No
-	if index == 4: return 3 # Food: 0, 1, 2
-	if index == 5: return 2 # Start Options: Default, Fixed
-	if index == 6: return 3
+	if index == 0: return 3 # Peaks: Flatten Alpine, Highland, Disabled
+	if index == 1: return 4 # Rivers: Disabled, Regular, Bridged Waterway, Bridgeless
+	if index == 2: return 2 # Historical Resources: Yes/No
+	if index == 3: return 3 # Food: 0, 1, 2
+	if index == 4: return 2 # Start Options: Default, Fixed
+	if index == 5: return 3 # World Wrap: Flat, Cylindrical, Toroidal
 	return 0
 
 def getCustomMapOptionDescAt(argsList):
 	index = argsList[0]
 	selection = argsList[1]
-	if index == 0: # Accuracy
-		if selection == 0: return "High (Australia)"
-		if selection == 1: return "Medium (Simplified China)"
-		return "Low (Shapes)"
-	if index == 1: # Peaks
+	if index == 0: # Peaks
 		if selection == 0: return "Flatten Alpine Regions"
 		if selection == 1: return "Flatten Alpine and Highland Regions"
 		return "Disabled (Allow all)"
-	if index == 2: # Rivers
+	if index == 1: # Rivers
 		if selection == 0: return "Disabled"
 		if selection == 1: return "Regular Rivers"
 		if selection == 2: return "Bridged Waterways"
 		return "Bridgeless Waterways"
-	if index == 3: # Historical Resources
+	if index == 2: # Historical Resources
 		if selection == 0: return "Vanilla Distribution"
 		return "Historical Placement"
-	if index == 4: # Food
+	if index == 3: # Food
 		if selection == 0: return "Disabled"
 		if selection == 1: return "At least 1"
 		return "At least 2"
-	if index == 5: # Start Options
+	if index == 4: # Start Options
 		if selection == 0: return "Vanilla"
 		return "Historical"
-	if index == 3: # Start Options
+	if index == 5: # World Wrap
 		if selection == 0: return "Flat"
 		elif selection == 1: return "Cylindrical"
 		return "Toroidal"
@@ -111,13 +105,12 @@ def getCustomMapOptionDescAt(argsList):
 
 def getCustomMapOptionDefault(argsList):
 	index = argsList[0]
-	if index == 0: return 0 # High
-	if index == 1: return 2 # Disabled
-	if index == 2: return 1 # Regular Rivers
-	if index == 3: return 0 # Historical
-	if index == 4: return 1 # 1 Food
-	if index == 5: return 0 # Vanilla
-	if index == 6: return 0 # Flat
+	if index == 0: return 2 # Peak Reduction disabled
+	if index == 1: return 1 # Regular Rivers
+	if index == 2: return 0 # Vanilla resource distribution
+	if index == 3: return 1 # 1 Food
+	if index == 4: return 0 # Vanilla starts
+	if index == 5: return 0 # Flat
 	return 0
 
 # -----------------------------------------------------------------------------
@@ -143,11 +136,11 @@ def isSeaLevelMap():
 
 def getWrapX():
 	map = CyMap()
-	return (map.getCustomMapOption(6) == 1 or map.getCustomMapOption(3) == 2)
+	return (map.getCustomMapOption(5) == 1 or map.getCustomMapOption(5) == 2)
 
 def getWrapY():
 	map = CyMap()
-	return (map.getCustomMapOption(6) == 2)
+	return (map.getCustomMapOption(5) == 2)
 
 def isClimateMap():
 	return 1
@@ -437,8 +430,7 @@ def generatePlotTypes():
 	m = CyMap()
 	climate = m.getClimate()
 	
-	accuracy = m.getCustomMapOption(0)
-	peak_opt = m.getCustomMapOption(1)
+	peak_opt = m.getCustomMapOption(0)
 	
 	sizekey = m.getWorldSize()
 	sizevalues = {
@@ -452,61 +444,35 @@ def generatePlotTypes():
 	(ScatterGrain, BalanceGrain, GatherGrain) = sizevalues[sizekey]
 	ZeroGrain = 0
 	
-	regions = []
-	if accuracy == 0: # High ACCURACY
-		# Name, Type, CX, CY, W, H, Angle, Terrain, Grain, Hills, Water%, bReduceEdges
-		regions = [
-			("Darwin", "Ellipse", 0.439, 0.846, 0.161, 0.099, 0, "default", BalanceGrain, BalanceGrain, 5, False),
-			("QL_NSW_VIC", "Ellipse", 0.616, 0.433, 0.356, 0.412, 266, "default", GatherGrain, BalanceGrain, 5, False),
-			("NorthernT", "Ellipse", 0.495, 0.672, 0.332, 0.197, -28, "plateau", BalanceGrain, BalanceGrain, 5, False),
-			("GreatSandyDesert", "Rect", 0.313, 0.644, 0.206, 0.257, 50, "default", BalanceGrain, BalanceGrain, 10, False),
-			("WestAustralia", "Rect", 0.222, 0.454, 0.208, 0.389, 24, "default", BalanceGrain, BalanceGrain, 5, False),
-			("Cape York", "Isotri", 0.615, 0.744, 0.123, 0.280, 1, "default", BalanceGrain, BalanceGrain, 10, False),
-			("GDR_South", "Ellipse", 0.667, 0.339, 0.239, 0.122, 61, "highland", BalanceGrain, BalanceGrain, 0, False),
-			("GDR_N", "Ellipse", 0.665, 0.570, 0.280, 0.115, -63, "highland", BalanceGrain, BalanceGrain, 0, False),
-			("SouthAustralia", "Rect", 0.439, 0.390, 0.230, 0.339, -1, "flat", BalanceGrain, ScatterGrain, 0, False),
-			("Ellipse7", "Ellipse", 0.419, 0.587, 0.188, 0.188, 0, "highland", ScatterGrain, ScatterGrain, 10, False),
-			("SA_Plateau", "Ellipse", 0.530, 0.338, 0.080, 0.161, -31, "plateau", ScatterGrain, BalanceGrain, 0, False),
-			("Ellipse8", "Ellipse", 0.313, 0.729, 0.072, 0.122, 24, "plateau", BalanceGrain, BalanceGrain, 0, False),
-			("Tasmania", "Isotri", 0.629, 0.082, 0.114, 0.125, 180, "plateau", GatherGrain, BalanceGrain, 5, False),
-			("SouthNZ", "Rect", 0.875, 0.136, 0.083, 0.225, 319, "default", BalanceGrain, BalanceGrain, 12, False),
-			("NorthNZ", "Rect", 0.944, 0.275, 0.075, 0.135, -29, "default", BalanceGrain, BalanceGrain, 30, False),
-			("Northland", "Ellipse", 0.906, 0.377, 0.091, 0.040, -55, "flat", BalanceGrain, BalanceGrain, 10, False),
-			("EastIndies", "Rect", 0.127, 0.953, 0.256, 0.095, 0, "default", ScatterGrain, BalanceGrain, 60, False),
-			("NG_PortMoresby", "Ellipse", 0.706, 0.934, 0.146, 0.074, -49, "plateau", BalanceGrain, BalanceGrain, 20, False),
-			("NewGuinea", "Ellipse", 0.607, 0.998, 0.183, 0.089, 0, "default", BalanceGrain, BalanceGrain, 20, False),
-			("Timor", "Rect", 0.318, 0.955, 0.131, 0.048, 29, "default", GatherGrain, BalanceGrain, 20, False),
-			("Coral_Sea", "Rect", 0.753, 0.734, 0.091, 0.094, -24, "alpine", ScatterGrain, BalanceGrain, 85, False),
-			("GreatAustBight", "Ellipse", 0.356, 0.208, 0.314, 0.309, 0, "water", BalanceGrain, BalanceGrain, 90, False),
-			("WA Plateau", "Rect", 0.206, 0.500, 0.126, 0.200, 22, "plateau", BalanceGrain, BalanceGrain, 0, False),
-			("Rottnest_Is", "Rect", 0.107, 0.280, 0.060, 0.077, 0, "default", ScatterGrain, ScatterGrain, 85, False),
-			("New_Caledonia", "Rect", 0.925, 0.641, 0.062, 0.042, 324, "default", ScatterGrain, BalanceGrain, 50, False),
-			("LordHowe_Norfolk_Isl", "Rect", 0.822, 0.410, 0.056, 0.283, 0, "default", ScatterGrain, BalanceGrain, 90, False),
-		]
-	elif accuracy == 1: # Medium ACCURACY
-		# Name, Type, CX, CY, W, H, Angle, Terrain, Grain, Hills, Water%, bReduceEdges
-		regions = [
-			("Low_Fractal_Mainland", "Rect", 0.25, 0.50, 0.70, 1.2, 0, "default", ScatterGrain, ScatterGrain, 0, False),
-			("Low_Fractal_WesternMountains", "Rect", 0.05, 0.50, 0.2, 1.2, 0, "highland", ScatterGrain, ScatterGrain, 10, False),
-			("Low_Fractal_Coast", "Ellipse", 0.4, 0.2, 0.9, 0.9, 0, "default", BalanceGrain, ScatterGrain, 15, False),
-			("Low_Fractal_North", "Ellipse", 0.8, 0.96, 0.6, 0.4, 45, "default", BalanceGrain, ScatterGrain, 20, False)
-		]
-	else: # LOW Accuracy = Shapes
-		# Name, Type, CX, CY, W, H, Angle, Terrain, Grain, Hills, Water%, bReduceEdges
-		regions = [
-			("FlatRect", "Rect", 0.25, 0.75, 0.15, 0.15, 45, "flat", GatherGrain, BalanceGrain, 0, False),
-			("DefaultEllipse", "Ellipse", 0.50, 0.75, 0.2, 0.3, 30, "default", GatherGrain, BalanceGrain, 0, False),
-			("PlateauIso", "Isotri", 0.75, 0.75, 0.2, 0.2, 0, "plateau", GatherGrain, BalanceGrain, 0, False),
-			
-			("HighlandRect", "Rect", 0.25, 0.5, 0.15, 0.15, 0, "highland", GatherGrain, BalanceGrain, 0, False),
-			("AlpineRect", "Rect", 0.50, 0.5, 0.15, 0.15, 0, "alpine", GatherGrain, BalanceGrain, 0, False),
-			("WaterRect", "Rect", 0.75, 0.5, 0.2, 0.2, 80, "flat", GatherGrain, BalanceGrain, 0, False),
-			("WaterEllipse", "Ellipse", 0.75, 0.5, 0.10, 0.10, 45, "water", BalanceGrain, BalanceGrain, 100, False),
-			
-			("GatherGrainRect", "Rect", 0.25, 0.25, 0.15, 0.15, 0, "default", GatherGrain, BalanceGrain, 30, False),
-			("BalanceGrainRect", "Rect", 0.50, 0.25, 0.15, 0.15, 0, "default", BalanceGrain, BalanceGrain, 30, False),
-			("ScatterGrainRect", "Rect", 0.75, 0.25, 0.15, 0.15, 0, "default", ScatterGrain, BalanceGrain, 30, False),
-		]
+	# Name, Type, CX, CY, W, H, Angle, Terrain, Grain, Hills, Water%, bReduceEdges
+	regions = [
+		("Darwin", "Ellipse", 0.439, 0.846, 0.161, 0.099, 0, "default", BalanceGrain, BalanceGrain, 5, False),
+		("QL_NSW_VIC", "Ellipse", 0.616, 0.433, 0.356, 0.412, 266, "default", GatherGrain, BalanceGrain, 5, False),
+		("NorthernT", "Ellipse", 0.495, 0.672, 0.332, 0.197, -28, "plateau", BalanceGrain, BalanceGrain, 5, False),
+		("GreatSandyDesert", "Rect", 0.313, 0.644, 0.206, 0.257, 50, "default", BalanceGrain, BalanceGrain, 10, False),
+		("WestAustralia", "Rect", 0.222, 0.454, 0.208, 0.389, 24, "default", BalanceGrain, BalanceGrain, 5, False),
+		("Cape York", "Isotri", 0.615, 0.744, 0.123, 0.280, 1, "default", BalanceGrain, BalanceGrain, 10, False),
+		("GDR_South", "Ellipse", 0.667, 0.339, 0.239, 0.122, 61, "highland", BalanceGrain, BalanceGrain, 0, False),
+		("GDR_N", "Ellipse", 0.665, 0.570, 0.280, 0.115, -63, "highland", BalanceGrain, BalanceGrain, 0, False),
+		("SouthAustralia", "Rect", 0.439, 0.390, 0.230, 0.339, -1, "flat", BalanceGrain, ScatterGrain, 0, False),
+		("Ellipse7", "Ellipse", 0.419, 0.587, 0.188, 0.188, 0, "highland", ScatterGrain, ScatterGrain, 10, False),
+		("SA_Plateau", "Ellipse", 0.530, 0.338, 0.080, 0.161, -31, "plateau", ScatterGrain, BalanceGrain, 0, False),
+		("Ellipse8", "Ellipse", 0.313, 0.729, 0.072, 0.122, 24, "plateau", BalanceGrain, BalanceGrain, 0, False),
+		("Tasmania", "Isotri", 0.629, 0.082, 0.114, 0.125, 180, "plateau", GatherGrain, BalanceGrain, 5, False),
+		("SouthNZ", "Rect", 0.875, 0.136, 0.083, 0.225, 319, "default", BalanceGrain, BalanceGrain, 12, False),
+		("NorthNZ", "Rect", 0.944, 0.275, 0.075, 0.135, -29, "default", BalanceGrain, BalanceGrain, 30, False),
+		("Northland", "Ellipse", 0.906, 0.377, 0.091, 0.040, -55, "flat", BalanceGrain, BalanceGrain, 10, False),
+		("EastIndies", "Rect", 0.127, 0.953, 0.256, 0.095, 0, "default", ScatterGrain, BalanceGrain, 60, False),
+		("NG_PortMoresby", "Ellipse", 0.706, 0.934, 0.146, 0.074, -49, "plateau", BalanceGrain, BalanceGrain, 20, False),
+		("NewGuinea", "Ellipse", 0.607, 0.998, 0.183, 0.089, 0, "default", BalanceGrain, BalanceGrain, 20, False),
+		("Timor", "Rect", 0.318, 0.955, 0.131, 0.048, 29, "default", GatherGrain, BalanceGrain, 20, False),
+		("Coral_Sea", "Rect", 0.753, 0.734, 0.091, 0.094, -24, "alpine", ScatterGrain, BalanceGrain, 85, False),
+		("GreatAustBight", "Ellipse", 0.356, 0.208, 0.314, 0.309, 0, "water", BalanceGrain, BalanceGrain, 90, False),
+		("WA Plateau", "Rect", 0.206, 0.500, 0.126, 0.200, 22, "plateau", BalanceGrain, BalanceGrain, 0, False),
+		("Rottnest_Is", "Rect", 0.107, 0.280, 0.060, 0.077, 0, "default", ScatterGrain, ScatterGrain, 85, False),
+		("New_Caledonia", "Rect", 0.925, 0.641, 0.062, 0.042, 324, "default", ScatterGrain, BalanceGrain, 50, False),
+		("LordHowe_Norfolk_Isl", "Rect", 0.822, 0.410, 0.056, 0.283, 0, "default", ScatterGrain, BalanceGrain, 90, False),
+	]
 
 
 	# Peak Reduction Logic
@@ -522,12 +488,12 @@ def generatePlotTypes():
 		processed_regions.append(tuple(r_list))
 
 	# Store the list for the debug sign placer
-	_DEBUG_REGIONS = regions
+	_DEBUG_REGIONS = processed_regions
 
 
 	global plotgen
 	plotgen = GeometricMultiFractal()
-	return plotgen.generatePlotsByRegion(regions)
+	return plotgen.generatePlotsByRegion(processed_regions)
 
 
 # -----------------------------------------------------------------------------
@@ -542,11 +508,8 @@ def get_climate_engine():
 		iW = m.getGridWidth()
 		iH = m.getGridHeight()
 		
-		# Always fetch the fresh custom option and climate ID
-		accuracy = m.getCustomMapOption(0)
-		
 		manager = CustomClimateManager(m)
-		_CLIMATE_ENGINE = CustomClimateGenerator(manager, iW, iH, accuracy)
+		_CLIMATE_ENGINE = CustomClimateGenerator(manager, iW, iH)
 		
 	return _CLIMATE_ENGINE
 
@@ -574,11 +537,10 @@ class CustomClimateGenerator:
 	"""
 	The engine that processes a specific X, Y coordinate against the Driver Stack.
 	"""
-	def __init__(self, manager, iW, iH, accuracy):
+	def __init__(self, manager, iW, iH):
 		self.manager = manager
 		self.iW = float(iW)
 		self.iH = float(iH)
-		self.accuracy = accuracy
 		
 		# Initialize fractal noise for jitter (Increased grain for visible scatter)
 		gc = CyGlobalContext()
@@ -638,8 +600,6 @@ class CustomClimateGenerator:
 		noise_m = (float(self.noise.getHeight(offset_X, offset_Y)) / 255.0) - 0.5
 		
 		noise_mult = 0.25 
-		if self.accuracy == 1: noise_mult = 0.25
-		elif self.accuracy == 2: noise_mult = 0.3 
 			
 		temp += (noise_t * noise_mult)
 		moisture += (noise_m * noise_mult)
@@ -1362,7 +1322,6 @@ class PathNavigator:
 	def get_best_move(self, cx, cy, tx, ty, visited, is_water_path, meander):
 		best_score = 999999.0
 		best_move = None
-		accuracy = self.map.getCustomMapOption(0)
 		dist_to_target = math.sqrt((cx - tx)**2 + (cy - ty)**2)
 
 		if is_water_path:
@@ -1383,7 +1342,7 @@ class PathNavigator:
 			
 			if is_water_path:
 				bSkip2x2 = False
-				if accuracy == 2 or dist_to_target < 4:
+				if dist_to_target < 4:
 					bSkip2x2 = True
 				else:
 					for adj in [(1,0), (-1,0), (0,1), (0,-1)]:
@@ -1668,72 +1627,36 @@ def addRivers():
 	
 	# Initialize the new Class-based system
 	nav = PathNavigator(m, dice)
-	waterways = WaterwayMaker(nav)
 	rivers = StandardRiverMaker(nav)
 	
 	# Fetch Map Options: 0=Disabled, 1=Regular, 2=Bridged Waterway, 3=Bridgeless
-	river_opt = m.getCustomMapOption(2)
-	is_waterway = (river_opt == 2 or river_opt == 3)
-	has_bridges = (river_opt == 2)
-	accuracy = m.getCustomMapOption(0)
-	
-
+	river_opt = m.getCustomMapOption(1)
 	
 	##################################################################################################
 	# 1. Historical Rivers
 	##################################################################################################
 	if river_opt != 0:
-		if accuracy == 0: # HIGH ACCURACY
-			Tasmania_Derwent = [(0.614, 0.1), (0.67, 0.031)]
-			Murray = [(0.653, 0.239), (0.581, 0.317), (0.475, 0.238)]
-			Darling = [(0.733, 0.422), (0.68, 0.433), (0.589, 0.39), (0.56, 0.27)]
-			WA_Swan_Avon = [(0.213, 0.315), (0.182, 0.36), (0.135, 0.326)]
-			WA_Fortescue = [(0.194, 0.573), (0.208, 0.596), (0.111, 0.672)]
-			WA_Fitzroy = [(0.32, 0.732), (0.275, 0.71), (0.23, 0.815)]
-			NT_Ord = [(0.359, 0.762), (0.346, 0.878)]
-			NQLD_Burdekin = [(0.629, 0.706), (0.668, 0.652), (0.701, 0.715)]
-			QLD_Fitzroy = [(0.691, 0.578), (0.756, 0.622)]
-			QLD_Warrego = [(0.632, 0.575), (0.632, 0.395)]
+		Tasmania_Derwent = [(0.614, 0.1), (0.67, 0.031)]
+		Murray = [(0.653, 0.239), (0.581, 0.317), (0.475, 0.238)]
+		Darling = [(0.733, 0.422), (0.68, 0.433), (0.589, 0.39), (0.56, 0.27)]
+		WA_Swan_Avon = [(0.213, 0.315), (0.182, 0.36), (0.135, 0.326)]
+		WA_Fortescue = [(0.194, 0.573), (0.208, 0.596), (0.111, 0.672)]
+		WA_Fitzroy = [(0.32, 0.732), (0.275, 0.71), (0.23, 0.815)]
+		NT_Ord = [(0.359, 0.762), (0.346, 0.878)]
+		NQLD_Burdekin = [(0.629, 0.706), (0.668, 0.652), (0.701, 0.715)]
+		QLD_Fitzroy = [(0.691, 0.578), (0.756, 0.622)]
+		QLD_Warrego = [(0.632, 0.575), (0.632, 0.395)]
 
-			rivers.build(Tasmania_Derwent, meander=0.2)
-			rivers.build(Murray, meander=0.2)
-			rivers.build(Darling, meander=0.2)
-			rivers.build(WA_Swan_Avon, meander=0.2)
-			rivers.build(WA_Fortescue, meander=0.2)
-			rivers.build(WA_Fitzroy, meander=0.2)
-			rivers.build(NT_Ord, meander=0.2)
-			rivers.build(NQLD_Burdekin, meander=0.2)
-			rivers.build(QLD_Fitzroy, meander=0.2)
-			rivers.build(QLD_Warrego, meander=0.2)
-
-		elif accuracy == 1: # Medium accuracy
-			# YELLOW RIVER - Xian to Mouth
-			yellow = [
-				(0.015, 0.648),
-				(0.109, 0.662), 
-				(0.194, 0.86), 
-				(0.353, 0.844), 
-				(0.343, 0.5),   # Xi'an Junction
-				(0.515, 0.513), # Zhengzhou
-				(0.73, 0.73)    # Mouth
-			]
-			# LONG RIVER with random checkpoints
-				# dice.get(21, ...) returns 0 to 20. 
-				# (0 to 20 - 10) / 200.0 results in -0.05 to +0.05.
-			# River Checkpoints (Base Y: 0.75)
-			j1 = (float(dice.get(21, "Jitter 1")) - 10.0) / 200.0
-			j2 = (float(dice.get(21, "Jitter 2")) - 10.0) / 200.0
-			j3 = (float(dice.get(21, "Jitter 3")) - 10.0) / 200.0
-			long_river = [(0.1, 0.25 + j1), (0.4, 0.25 + j2), (1.0, 0.25 + j3)]
-			
-			# set if waterway or regular river
-			if is_waterway:
-				waterways.build(long_river, meander=0.15, bridge_spacing=4, bBridgesEnabled=has_bridges)
-				waterways.build(yellow, meander=0.2, bridge_spacing=4, bBridgesEnabled=has_bridges)
-				
-			else:
-				rivers.build(long_river, meander=0.2)
-				rivers.build(yellow, meander=0.2)
+		rivers.build(Tasmania_Derwent, meander=0.2)
+		rivers.build(Murray, meander=0.2)
+		rivers.build(Darling, meander=0.2)
+		rivers.build(WA_Swan_Avon, meander=0.2)
+		rivers.build(WA_Fortescue, meander=0.2)
+		rivers.build(WA_Fitzroy, meander=0.2)
+		rivers.build(NT_Ord, meander=0.2)
+		rivers.build(NQLD_Burdekin, meander=0.2)
+		rivers.build(QLD_Fitzroy, meander=0.2)
+		rivers.build(QLD_Warrego, meander=0.2)
 
 
 	##############################
@@ -1997,7 +1920,7 @@ def _assign_all_starting_plots():
 	# Force a recalculation of areas to ensure 'isWater' and 'area size' are accurate
 	map.recalculateAreas()
 	
-	start_option = map.getCustomMapOption(5)
+	start_option = map.getCustomMapOption(4)
 
 	final_assignments = {} 
 	assigned_coords = []   
@@ -2588,8 +2511,8 @@ def addCustomResources():
 	rm = ResourceManager(m, gc, dice, iW, iH)
 	
 	# Custom Options
-	food_count = m.getCustomMapOption(4) # 0, 1, or 2
-	bHistorical = (m.getCustomMapOption(3) == 1)
+	food_count = m.getCustomMapOption(3) # 0, 1, or 2
+	bHistorical = (m.getCustomMapOption(2) == 1)
 
 	if bHistorical: # Region-specific resources
 		region_specs = [
@@ -2699,8 +2622,7 @@ def addCustomResources():
 	if bHistorical:  # Map-wide Swaps
 		swap_rules =[]
 		swap_rules.append(("BONUS_CORN", "BONUS_WHEAT")) # Swap corn for wheat
-
-	rm.swap_resources(swap_rules)
+		rm.swap_resources(swap_rules)
 
 	# 3. Strategic resources
 	Strategics = ["BONUS_COPPER", "BONUS_IRON", "BONUS_HORSE"]
