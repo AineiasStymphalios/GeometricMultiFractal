@@ -613,8 +613,8 @@ class CustomClimateGenerator:
 				
 				if driver.type == "LINEAR":
 					# Tiles behind the origin are outside the linear influence.
-					if proj_dist >= 0:
-						factor = proj_dist / driver.radius
+					if proj_dist >= -1e-12:
+						factor = max(0.0, proj_dist) / driver.radius
 						
 				elif driver.type == "MIRRORED":
 					# Symmetrical falloff on both sides of the axis

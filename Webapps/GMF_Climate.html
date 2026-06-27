@@ -633,7 +633,7 @@ self.drivers.append(ClimateDriver("MOISTURE", "RADIAL", (0.7, 1), 1.6, 0, 0.45))
                 const projDist = (dx * cosA) + (dy * sinA);
 
                 if (d.type === "LINEAR") {
-                    if (projDist >= 0) factor = projDist / d.radius;
+                    if (projDist >= -1e-12) factor = Math.max(0, projDist) / d.radius;
                 } else if (d.type === "MIRRORED") {
                     factor = Math.abs(projDist) / d.radius;
                 }
