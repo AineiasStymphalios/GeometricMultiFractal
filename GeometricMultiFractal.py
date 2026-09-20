@@ -2132,6 +2132,9 @@ class ResourceManager:
 			
 		# 3. Check Feature
 		iFeature = pPlot.getFeatureType()
+		if bonus_id == self._bonus_id("BONUS_OIL"):
+			if iFeature == self.gc.getInfoTypeForString("FEATURE_FLOOD_PLAINS"):
+				return False
 		if iFeature != -1:
 			if not info.isFeature(iFeature):
 				# Special case: If it's a feature we are willing to clear (Forest/Jungle)
@@ -2357,6 +2360,8 @@ class ResourceManager:
 
 			# TIER 2: Emergency (Any Land)
 			if not placed_successfully:
+				iOil = self._bonus_id("BONUS_OIL")
+				iFloodplains = self.gc.getInfoTypeForString("FEATURE_FLOOD_PLAINS")
 				emergency_plots = []
 				for dx in range(-radius, radius + 1):
 					for dy in range(-radius, radius + 1):
@@ -2366,6 +2371,7 @@ class ResourceManager:
 								pPlot = self.map.plot(nx, ny)
 								if not pPlot.isWater() and not pPlot.isPeak() and not pPlot.isStartingPlot():
 									if pPlot.getBonusType(-1) == -1:
+										if shuffled_ids[0] == iOil and pPlot.getFeatureType() == iFloodplains: continue
 										emergency_plots.append(pPlot)
 
 				if len(emergency_plots) > 0:
